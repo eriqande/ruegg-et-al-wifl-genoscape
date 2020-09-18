@@ -18,7 +18,7 @@ install.packages(
 
 # Get package genoscapeRtools at https://github.com/eriqande/genoscapeRtools
 # This is a package of useful functions by Eric C. Anderson. We
-# used commit `XXXXXX`.  Get it like this:
-# remotes::install_github("eriqande/genoscapeRtools", ref = "6972defd")
+# used commit `19e0f33`.  Get it like this:
+# remotes::install_github("eriqande/genoscapeRtools", ref = "19e0f33")
 # UPDATE UPON FINAL RELEASE WITH THE ACTUAL COMMIT USED
 remotes::install_github("eriqande/genoscapeRtools")

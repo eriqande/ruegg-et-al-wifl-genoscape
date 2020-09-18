@@ -1,0 +1,252 @@
+---
+title: "RAD-Seq data Summaries and PCA"
+author: "Eric C. Anderson"
+date: "Last Updated: `r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+bibliography: references.bib
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+start_time <- Sys.time()
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+library(genoscapeRtools)
+library(SNPRelate)
+library(whoa)
+
+dir.create("outputs/001", recursive = TRUE, showWarnings = FALSE)
+```
+
+# Load RAD data and filter obvious paralogs
+
+```{r}
+rad <- read_rds(path = "data/rad_wifl_clean_175_105000.rds")
+
+# number of individuals and SNPs in this matrix:
+dim(rad)
+```
+
+## Removing some obvious paralogs
+
+First, get the collection locations so we can grab all the INW birds, which
+we largely expect to be in HWE proportions.
+```{r}
+meta_full <- read_csv("data/wifl-samples-metadata.csv")
+
+inw_ids <- meta_full %>%
+  filter(Collection.Location == "INW", Screen == "RAD") %>%
+  pull(indiv)
+
+inw_rad <- rad[inw_ids, ]
+```
+
+Then compute expected vs observed genotype freqs in one of the large
+populations and plot those.
+```{r}
+geno_freqs <- whoa::exp_and_obs_geno_freqs(d012 = t(inw_rad))
+
+# now plot them, but don't jitter them at all
+g <- ggplot(geno_freqs, aes(x = p_exp, y = p_obs, colour = geno)) +
+  geom_point(alpha = 0.1) +
+  facet_wrap(~ geno, nrow = 1) +
+  geom_polygon(data = geno_freq_boundaries(), fill = NA, linetype = "dashed", colour = "black") +
+  geom_abline(slope = 1, intercept = 0, linetype = "solid")
+g
+```
+
+The obvious paralogs fall along the bottom boundary (dotted line).  Those
+are paralogs that are fixed for different alleles, or one which is fixed and
+the other segregating for variation.  We can roughly pick them out like this:
+```{r}
+likely_paralogs <- geno_freqs %>%
+  group_by(snp) %>%
+  mutate(is_likely_paralog = {
+    ret <- FALSE
+    if (
+      ((p_exp[1] > 0.125 & p_exp[1] < 0.3) & p_obs[1] < 0.02) |     # the 0  homozygote geno category
+      ((p_exp[3] > 0.125 & p_exp[3] < 0.3) & p_obs[3] < 0.02) |     # the 1 homozygote geno category
+      ((p_exp[3] > 0.21 & p_exp[3] < 0.3) & p_obs[3] < 0.06)        # the extra blip of the 1 homozygote category
+    ) {
+      ret <- TRUE
+    }
+    ret
+  }) %>%
+  filter(is_likely_paralog) %>%
+  ungroup()
+```
+
+Let's plot them in black to see them on the original plot:
+```{r}
+g + geom_point(
+    data = likely_paralogs,
+    colour = "black"
+  )
+```
+Get the ids of those likely paralogs:
+```{r}
+paralog_ids <- unique(likely_paralogs$snp)
+
+# how many are there?
+length(paralog_ids)
+  
+```
+
+Remove those likely paralogs from the data set:
+```{r}
+rad2 <- rad[, setdiff(colnames(rad), paralog_ids)]
+```
+
+## Remove monomorphic sites, if any
+
+Any sites with a frequency of 0 or 1 should be tossed.  Let's compute the allele frequencies
+and find any such sites:
+```{r}
+rad2NA <- rad2
+rad2NA[rad2 == -1] <- NA
+freqs <- colMeans(rad2NA, na.rm = TRUE)
+monomorph <- freqs[near(freqs, 0) | near(freqs, 1)]
+monomorph_ids <- names(monomorph)
+
+# how many alleles are monomorphic
+length(monomorph_ids)
+```
+
+So, finally retain only the non-monomorphic ones:
+```{r}
+rad3 <- rad2[, setdiff(colnames(rad2), monomorph_ids)]
+
+# how many?
+dim(rad3)
+```
+
+# Summarise missing data
+
+
+
+Missing fraction missing data in each individual:
+```{r}
+miss_fract_within_indivs <- rowMeans(rad3 == -1)
+
+# max missing within an individual
+max(miss_fract_within_indivs)
+
+# mean missing within individuals
+mean(miss_fract_within_indivs)
+```
+
+Fraction of individuals missing data at each SNP:
+```{r}
+miss_fract_at_each_snp <- colMeans(rad3 == -1)
+
+# max missing at a SNP
+max(miss_fract_at_each_snp)
+
+# mean missing across all SNPs
+mean(miss_fract_at_each_snp)
+```
+
+Look at the allele frequencies:
+```{r}
+radNA <- rad3
+radNA[rad3 == -1] <- NA
+freqs <- colMeans(radNA, na.rm = TRUE) / 2
+hist(freqs, breaks = seq(0,1, by = 0.01))
+```
+
+# Perform PCA using SNPRelate via genoscapeRtools
+
+First PCA:
+```{r}
+pca <- genoscape_pca(
+  dat012 = rad3
+)
+
+# and plot the first two principal components
+ggplot(pca$pca_df, aes(x = `PC-01`, y = `PC-02`)) +
+  geom_point(shape = 1)
+
+```
+
+## Color those points according to collection location
+
+We will color the points on the above plot according to the collection
+locations of the birds.
+```{r}
+meta <- meta_full %>%
+  select(indiv, Collection.Location)
+
+pca2 <- pca$pca_df %>%
+  left_join(meta, by = c("sample" = "indiv"))
+
+# get the cluster_colors:
+source("R/colors.R")
+
+g <- ggplot(
+  data = pca2,
+  mapping = aes(
+    x = `PC-01`,
+    y = `PC-02`,
+    fill = Collection.Location
+    )
+  ) + 
+  geom_point(shape = 21) +
+  scale_fill_manual(
+    values = cluster_colors,
+    name = "Collection\nLocation"
+  )
+ 
+g 
+```
+
+There is fairly evident structure.
+
+The proportion variance explained by the first two PCs is:
+```{r}
+pca$proportion_variance[1:2]
+```
+
+The final figure for the paper was reflected (so that positions of clusters correspond
+better to geography) and "prettified" using image editing software.
+
+# Calculate $F_\mathrm{ST}$ between clusters / collection locations
+
+Thisis a single step with genoscapeRtools:
+```{r}
+FST <- meta %>%
+  filter(indiv %in% rownames(rad3)) %>%
+  rename(sample = indiv, group = Collection.Location) %>%
+  pairwise_fst(rad3, .)
+```
+
+Now, let's just write those results out to a CSV file.
+Specifically we want to put the Fst values and the n values
+in tables:
+```{r}
+fst_table <- FST$Fst %>%
+  pivot_wider(
+    id_cols = pop1,
+    names_from = pop2,
+    values_from = Fst
+  )
+
+ns_table <- FST$Fst %>%
+  mutate(ns = str_c(n_pop1, ",", n_pop2)) %>%
+  pivot_wider(
+    id_cols = pop1,
+    names_from = pop2,
+    values_from = ns
+  )
+
+# and write these out
+write_csv(fst_table, "outputs/001/rad-fst-table.csv")
+write_csv(ns_table, "outputs/001/rad-fst-sample-sizes-table.csv")
+```
