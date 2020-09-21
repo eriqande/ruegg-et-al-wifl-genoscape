@@ -1,0 +1,45 @@
+---
+title: "Select SNPs for Assay Development from RAD-Seq Data"
+author: "Eric C. Anderson"
+date: "Last Updated: `r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+bibliography: references.bib
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+start_time <- Sys.time()
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+library(genoscapeRtools)
+
+dir.create("outputs/002", recursive = TRUE, showWarnings = FALSE)
+```
+
+
+# Just get the data together and cleaned and merged
+
+I will do this and commit it and then remove it...
+
+```{r}
+meta_full <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv")
+
+# get the WIFL categories used for SNP selection
+grps <- read_tsv("~/Documents/git-repos/genoscapeRtools/development/data/WIFL_Cat_forAssayDesign.txt") %>%
+  select(Individual, Subspecies_Pure, Within_Subspecies)
+
+# now left join those onto meta_full 
+new_meta_full <- meta_full %>%
+  left_join(grps, by = c("Field_Number" = "Individual")) %>%
+  select(`final-map-label`:Subspecies, Subspecies_Pure, Within_Subspecies, everything())
+
+write_csv(new_meta_full, path = "data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv")
+```
