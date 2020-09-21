@@ -40,11 +40,11 @@ dim(rad)
 First, get the collection locations so we can grab all the INW birds, which
 we largely expect to be in HWE proportions.
 ```{r}
-meta_full <- read_csv("data/wifl-samples-metadata.csv")
+meta_full <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv")
 
 inw_ids <- meta_full %>%
-  filter(Collection.Location == "INW", Screen == "RAD") %>%
-  pull(indiv)
+  filter(repunit == "INW", geno_method == "RAD") %>%
+  pull(Field_Number)
 
 inw_rad <- rad[inw_ids, ]
 ```
@@ -182,10 +182,10 @@ We will color the points on the above plot according to the collection
 locations of the birds.
 ```{r}
 meta <- meta_full %>%
-  select(indiv, Collection.Location)
+  select(Field_Number, repunit)
 
 pca2 <- pca$pca_df %>%
-  left_join(meta, by = c("sample" = "indiv"))
+  left_join(meta, by = c("sample" = "Field_Number"))
 
 # get the cluster_colors:
 source("R/colors.R")
@@ -195,7 +195,7 @@ g <- ggplot(
   mapping = aes(
     x = `PC-01`,
     y = `PC-02`,
-    fill = Collection.Location
+    fill = repunit
     )
   ) + 
   geom_point(shape = 21) +
@@ -222,8 +222,8 @@ better to geography) and "prettified" using image editing software.
 Thisis a single step with genoscapeRtools:
 ```{r}
 FST <- meta %>%
-  filter(indiv %in% rownames(rad3)) %>%
-  rename(sample = indiv, group = Collection.Location) %>%
+  filter(Field_Number %in% rownames(rad3)) %>%
+  rename(sample = Field_Number, group = repunit) %>%
   pairwise_fst(rad3, .)
 ```
 

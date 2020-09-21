@@ -2782,7 +2782,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">RAD-Seq data Summaries and PCA</h1>
 <h4 class="author">Eric C. Anderson</h4>
-<h4 class="date">Last Updated: 2020-09-17</h4>
+<h4 class="date">Last Updated: 2020-09-21</h4>
 
 </div>
 
@@ -2803,11 +2803,11 @@ dim(rad)</code></pre>
 <div id="removing-some-obvious-paralogs" class="section level2">
 <h2>Removing some obvious paralogs</h2>
 <p>First, get the collection locations so we can grab all the INW birds, which we largely expect to be in HWE proportions.</p>
-<pre class="r"><code>meta_full &lt;- read_csv(&quot;data/wifl-samples-metadata.csv&quot;)
+<pre class="r"><code>meta_full &lt;- read_csv(&quot;data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv&quot;)
 
 inw_ids &lt;- meta_full %&gt;%
-  filter(Collection.Location == &quot;INW&quot;, Screen == &quot;RAD&quot;) %&gt;%
-  pull(indiv)
+  filter(repunit == &quot;INW&quot;, geno_method == &quot;RAD&quot;) %&gt;%
+  pull(Field_Number)
 
 inw_rad &lt;- rad[inw_ids, ]</code></pre>
 <p>Then compute expected vs observed genotype freqs in one of the large populations and plot those.</p>
@@ -2910,12 +2910,12 @@ hist(freqs, breaks = seq(0,1, by = 0.01))</code></pre>
 ##     using 1 (CPU) core
 ## PCA:    the sum of all selected genotypes (0,1,2) = 5992010
 ## CPU capabilities: Double-Precision SSE2
-## Thu Sep 17 17:06:40 2020    (internal increment: 4280)
+## Mon Sep 21 09:46:52 2020    (internal increment: 4280)
 ## 
 [..................................................]  0%, ETC: ---        
-[==================================================] 100%, completed, 0s
-## Thu Sep 17 17:06:40 2020    Begin (eigenvalues and eigenvectors)
-## Thu Sep 17 17:06:40 2020    Done.</code></pre>
+[==================================================] 100%, completed, 1s
+## Mon Sep 21 09:46:53 2020    Begin (eigenvalues and eigenvectors)
+## Mon Sep 21 09:46:53 2020    Done.</code></pre>
 <pre><code>## Warning: The `x` argument of `as_tibble.matrix()` must have unique column names if `.name_repair` is omitted as of tibble 2.0.0.
 ## Using compatibility `.name_repair`.
 ## This warning is displayed once every 8 hours.
@@ -2928,10 +2928,10 @@ ggplot(pca$pca_df, aes(x = `PC-01`, y = `PC-02`)) +
 <h2>Color those points according to collection location</h2>
 <p>We will color the points on the above plot according to the collection locations of the birds.</p>
 <pre class="r"><code>meta &lt;- meta_full %&gt;%
-  select(indiv, Collection.Location)
+  select(Field_Number, repunit)
 
 pca2 &lt;- pca$pca_df %&gt;%
-  left_join(meta, by = c(&quot;sample&quot; = &quot;indiv&quot;))
+  left_join(meta, by = c(&quot;sample&quot; = &quot;Field_Number&quot;))
 
 # get the cluster_colors:
 source(&quot;R/colors.R&quot;)
@@ -2941,7 +2941,7 @@ g &lt;- ggplot(
   mapping = aes(
     x = `PC-01`,
     y = `PC-02`,
-    fill = Collection.Location
+    fill = repunit
     )
   ) + 
   geom_point(shape = 21) +
@@ -2963,8 +2963,8 @@ g </code></pre>
 <h1>Calculate <span class="math inline">\(F_\mathrm{ST}\)</span> between clusters / collection locations</h1>
 <p>Thisis a single step with genoscapeRtools:</p>
 <pre class="r"><code>FST &lt;- meta %&gt;%
-  filter(indiv %in% rownames(rad3)) %&gt;%
-  rename(sample = indiv, group = Collection.Location) %&gt;%
+  filter(Field_Number %in% rownames(rad3)) %&gt;%
+  rename(sample = Field_Number, group = repunit) %&gt;%
   pairwise_fst(rad3, .)</code></pre>
 <p>Now, let’s just write those results out to a CSV file. Specifically we want to put the Fst values and the n values in tables:</p>
 <pre class="r"><code>fst_table &lt;- FST$Fst %&gt;%
