@@ -13,7 +13,7 @@ Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith
   - [RMarkdown Documents](#rmarkdown-documents)
       - [001-rad-seq-data-summaries-and-pca.Rmd](#rad-seq-data-summaries-and-pca.rmd)
       - [002-select-snps-for-assays-from-rad.Rmd](#select-snps-for-assays-from-rad.rmd)
-      - [Literature Cited](#literature-cited)
+  - [Literature Cited](#literature-cited)
 
 **Last Updated:** 2020-09-22
 
@@ -210,7 +210,7 @@ All the steps we went through to rank SNPs for ability to resolve
 different populations/subspecies, and then the workflow for designing
 Fluidigm assays from them.
 
-## Literature Cited
+# Literature Cited
 
 <div id="refs" class="references">
 

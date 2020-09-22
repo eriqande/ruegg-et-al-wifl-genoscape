@@ -205,5 +205,5 @@ then producing a PCA plot and estimates of pairwise $F_\mathrm{ST}$.
 All the steps we went through to rank SNPs for ability to resolve different
 populations/subspecies, and then the workflow for designing Fluidigm assays from them.
 
-## Literature Cited
+# Literature Cited
 
