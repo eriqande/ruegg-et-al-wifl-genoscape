@@ -14,11 +14,16 @@ install.packages(
   repos = "http://cran.rstudio.com"
 )
 
+# Install packages from BioConductor
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("SNPRelate")
 
 
-# Get package genoscapeRtools at https://github.com/eriqande/genoscapeRtools
-# This is a package of useful functions by Eric C. Anderson. We
-# used commit `19e0f33`.  Get it like this:
-# remotes::install_github("eriqande/genoscapeRtools", ref = "19e0f33")
+
+# Install Eric's Packages from GitHub
 # UPDATE UPON FINAL RELEASE WITH THE ACTUAL COMMIT USED
 remotes::install_github("eriqande/genoscapeRtools")
+remotes::install_github("eriqande/snps2assays")
+remotes::install_github("eriqande/whoa")

@@ -7,3 +7,7 @@ wifl_clean.gds
 outputs
 wifl_manuscript_and_tables
 .DS_Store
+genome
+002-select-snps-for-assays-from-rad.html
+002-select-snps-for-assays-from-rad.nb.html
+stored_run_times

@@ -1,11 +1,11 @@
 ---
 title: "Ruegg et. al., WIFL Genoscape, Data and Code Repository"
-author: "Kristen C. Ruegg, Eric C. Anderson, Marius, Mary W, RBay, Eben, and Tom"
+author: "Kristen Ruegg, Eric C. Anderson, Marius Somvielle, Rachael A. Bay, Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith"
 output:
   html_document:
     toc: true
-    toc_float: true
     toc_depth: 3
+    df_print: paged
   github_document:
     toc: true
     toc_depth: 3
@@ -15,7 +15,10 @@ bibliography: references.bib
 **Last Updated:** `r Sys.Date()`
 
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, message=FALSE}
+library(tidyverse)
+library(hms)
+
 knitr::opts_chunk$set(echo = TRUE)
 
 # use this for the the README.md
@@ -26,7 +29,7 @@ Dbase <- "./"
 
 # choose the one that you want here depending on if you are on the
 # GitHub README or are making an index.html for the docs directory
-hdir <- Dbase
+hdir <- GPbase
 
 make_link <- function(Rmd, base = hdir) {
   nb <- stringr::str_replace(Rmd, "Rmd$", "html")
@@ -34,6 +37,7 @@ make_link <- function(Rmd, base = hdir) {
 }
 ```
 
+# Overview
 
 This repository includes code, data, and some intermediate results to
 reproduce the results in Ruegg et al. ("Seasonal niche breadth predicts
@@ -47,40 +51,93 @@ of contents, etc.) on GitHub pages at:
 [https://eriqande.github.io/ruegg-et-al-wifl-genoscape/](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/)
 
 
-For the whole-genome resequencing data, the production of BAMs and VCFs from the original FASTQ files follows a
-standard bwa/GATK pipeline as described in the supplemental methods.  Here we focus on analyses
-of the products of that work.  The various steps are described in a series of RMarkdown documents with a
-fair bit of explanation/description of the procedures.  Analyses requiring the use
-of cluster computing resources are described and documented, but will not be run automatically
-by evaluating the RMarkdown document.  Implementing them yourself will
-require modification for the vagaries of your own high performance computing system and
-preferred mode of parallelization, etc.  Running some of the RMarkdown documents requires
-a proper shell.  These were initially developed and run on a Mac. They have also
-been tested and confirmed to run on a server running CentOs 7.
+RAD sequening and the production of BAMs and VCFs was described and documented in
+@ruegg2018ecological. The work described in this repository uses the products from that work
+
+The various steps in our analyses are described in a series of RMarkdown documents with a
+fair bit of explanation/description of the procedures.  The few analyses that used
+cluster computing resources are described and documented, but results from those analyses
+are included in `stored_results` so that it is not necessary to have access to a cluster
+to reproduce the results herein. 
+
+Running some of the RMarkdown documents requires
+a proper shell.  These were initially developed and run on a Mac.
 
 Rmarkdown documents and scripts in the 000 series were developed primarily by Eric C. Anderson.
+Rmarkdown documents and scripts in the 100 series were developed primarily by Marius Somveille.
 
 
 
 All the RMarkdown documents or scripts can be evaluated en masse by
 sourcing the R script `render-numbered-Rmds.R`.  On a fairly old mac laptop the run times
-for each are as follows.
-
-Rmarkdown document  | Run time
-------------------- | ---------
-001-align-coho-genome.Rmd | 1.7 secs
-002-allele-frequencies.Rmd (after running initial results on cluster) | 3.3 mins
-003-extract-johnson-creek-variants.Rmd | 8.7 mins
-
+for each are as follows:
+```{r, echo=FALSE}
+if(!file.exists("stored_run_times")) {
+  message("You must run all the Rmarkdown documents to store the run times...")
+} else {
+  rtfs <- dir("stored_run_times", full.names = TRUE)
+  time_tib <- tibble(
+    rts = lapply(rtfs, function(x) read_rds(x)),
+    tfile = basename(rtfs)
+  ) %>%
+    mutate(`Running time in HH:MM:SS` = map_chr(rts, format))
+  
+  rmds <- dir(pattern = "[0-9][0-9][0-9]-.*\\.Rmd")
+  file_tib <- tibble(File = rmds) %>%
+    mutate(tfile = str_c(str_match(rmds, "([0-9][0-9][0-9])-.*\\.Rmd")[, 2], ".rds"))
+  fft <- file_tib %>%
+    left_join(time_tib, by = "tfile") %>%
+    select(File, `Running time in HH:MM:SS`)
+  fft
+}
+```
 
 
 # Preliminaries and Dependencies
 
 Below is a description of the needed dependencies.  A script to install all of
-them on one of our test clusters is at `000-00-prepare-dependencies.sh`, but it will
+them on one of our test clusters is at `000-00-prepare-dependencies.sh`, but it may
 likely need some tweaking on your system.
 
+## Unix Programs
 
+The following programs must be installed and available in the PATH. Versions
+used on Eric's laptop appear in parentheses.
+
+- `bgzip`:
+- `samtools`:
+- `tabix`:
+
+
+## Genomic resources
+
+Create a directory in the top level of the repository, download the willow flycatcher
+then modify the sequence names to be
+consistent with the nomenclature used in this work and index the genome (that
+nomenclature is already in in the FASTA file, but just not as the sequence name).
+```sh
+mkdir genome
+cd genome/
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/genbank/vertebrate_other/Empidonax_traillii/latest_assembly_versions/GCA_003031625.1_ASM303162v1/GCA_003031625.1_ASM303162v1_genomic.fna.gz
+ftp://ftp.ncbi.nlm.nih.gov/genomes/genbank/vertebrate_other/Empidonax_traillii/latest_assembly_versions/GCA_003031625.1_ASM303162v1/GCA_003031625.1_ASM303162v1_assembly_report.txt
+
+# now, change the sequence names and make sure that the DNA bases
+# are all listed in UPPERCASE.
+gzcat GCA_003031625.1_ASM303162v1_genomic.fna.gz | awk '
+  /^>/ {
+    tmp = substr($1, 2)
+    newname = $6
+    sub(/,/, "", newname)
+    sub(/:/, "|", newname)
+    $1 = ">" newname;
+    $6 = tmp ",";
+    print
+    next
+  }
+  {print toupper($0)}
+' > wifl-genome.fna
+samtools faidx wifl-genome.fna
+```
 
 ## Geospatial data
 
@@ -93,10 +150,6 @@ Make a directory in the top level of the repository called
     - 10m-cultural-vectors, Admin 1 – States, Provinces, Download boundary lines: [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip). Put or symlink the resulting directory, `ne_10m_admin_1_states_provinces_lines` into `geo-spatial`.
     - Finally, get the coastlines: [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip), and put the resulting folder, `ne_10m_coastline` into `geo-spatial`.
 
-## Unix Programs
-
-The following programs must be installed and available in the PATH. Versions
-used on Eric's laptop appear in parentheses.
 
 
 
@@ -119,7 +172,7 @@ packages:
 # RMarkdown Documents
 
 The following RMarkdown documents should be evaluated in order.
-The script `render-numbered-Rmds.R` will do that (except for `002-allele-frequencies.Rmd`)
+The script `render-numbered-Rmds.R` (NOT WRITTEN YET) will do that
 when run in the top level
 of this repository.
 Some RMarkdown documents rely on
@@ -129,23 +182,27 @@ calls to Unix utilities, so might not run on non-Unix or non-Linux architectures
 Outputs (figures, tables, R data objects, etc) from each RMarkdown document
 are written to the `outputs/XXX` directories.  Intermediate files
 written during evaluation of each RMarkdown document are written
-to the `intermediates/XXX` directories. To facilitate working between
+to the `intermediates/XXX` directories (THOUGH I MIGHT NOT USE intermediates AT ALL). 
+To facilitate working between
 the cluster and a desktop/laptop, some outputs are written to
 the `stored_results/XXX` directories which are version controlled and
 included in this repo.
 
 
 Thumbnails of the figures and tables generated by each RMarkdown document appear
-below.  Additionally, at the top of each section is a link to the
+below (NOT YET).  Additionally, at the top of each section is a link to the
 compiled (HTML-version) of the RMarkdown document on GitHub Pages.
 
 
-## `r make_link("001-align-coho-genome.Rmd")`
+## `r make_link("001-rad-seq-data-summaries-and-pca.Rmd")`
 
-The products of this analysis go into creation of some of the trees (`009`) and also
-in the designation of the alleles as ancestral or not in some of the haplotype rasters (`006`).
+Summarizing the RAD seq data, filtering out obvious paralogs and monomorphic sites,
+then producing a PCA plot and estimates of pairwise $F_\mathrm{ST}$. 
 
+## `r make_link("002-select-snps-for-assays-from-rad.Rmd")`
 
+All the steps we went through to rank SNPs for ability to resolve different
+populations/subspecies, and then the workflow for designing Fluidigm assays from them.
 
-## References
+## Literature Cited
 

@@ -6,7 +6,6 @@ output:
   html_document:
     df_print: paged
     toc: true
-    toc_float: true
 bibliography: references.bib
 ---
 
@@ -250,3 +249,18 @@ ns_table <- FST$Fst %>%
 write_csv(fst_table, "outputs/001/rad-fst-table.csv")
 write_csv(ns_table, "outputs/001/rad-fst-sample-sizes-table.csv")
 ```
+
+# Running Time
+
+Running the code and rendering this notebook required approximately this much time
+on a Mac laptop of middling speed, listed in `HH:MM:SS`.
+```{r}
+td <- Sys.time() - start_time
+tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
+dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
+write_rds(tdf, "stored_run_times/001.rds")
+tdf
+```
+
+
+# Literature Cited

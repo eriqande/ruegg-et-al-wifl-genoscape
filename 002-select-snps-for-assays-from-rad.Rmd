@@ -6,7 +6,8 @@ output:
   html_document:
     df_print: paged
     toc: true
-    toc_float: true
+  html_notebook:
+    toc: true
 bibliography: references.bib
 ---
 
@@ -20,26 +21,603 @@ start_time <- Sys.time()
 ```{r, message=FALSE}
 library(tidyverse)
 library(genoscapeRtools)
+library(snps2assays)
 
 dir.create("outputs/002", recursive = TRUE, showWarnings = FALSE)
 ```
 
 
-# Just get the data together and cleaned and merged
+# Introduction
 
-I will do this and commit it and then remove it...
+In order to select a number of assays that should have high power for
+resolving different groups of Willow Flycatchers, we divided individuals
+into subspecies groups (`Subspecies_Pure`) and also groups within subspecies
+(`Within_Subspecies`) that we would like to be able to resolve.  For a number of
+different pairwise comparisons between these groups, we used the allele frequencies
+estimated from the RAD seq data to compute the expected probability of
+correct assignment of an individual of each group to its group for details of these
+calculations see pg. 118 in @clemento2014evaluation. For each such
+comparison, we chose the top 300 markers, and then cycled over those comparisons,
+taking a single such top SNP from each comparison, and moving down the lists until
+we had a number of candidates.  We then further filtered these candidates according
+to whether Fluidigm assays could be designed for them.
 
-```{r}
+To the final set of candidates we also added  the Climate Associated SNPs from @ruegg2018ecological.
+
+# Finding highly diverged SNPs (the "Divergence SNPs") from the RAD-Seq data
+
+These are the SNPs that we are choosing because of allele freq
+differences between certain groups.
+
+## Get the SNPs 
+We develop SNPs from amongst those that passed our "clean" filters (even though, 
+later, we will include
+more variation to ensure there is little variation in the flanking regions)
+```{r read-snps, message=FALSE}
+wifl_clean <- read_rds("data/rad_wifl_clean_175_105000.rds")
+```
+
+
+## Get and process the groups
+We also want the groups that we are putting the birds into. 
+Here is the file of designations that Kristen has 
+supplied:
+```{r group-desig, message=FALSE}
 meta_full <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv")
 
-# get the WIFL categories used for SNP selection
-grps <- read_tsv("~/Documents/git-repos/genoscapeRtools/development/data/WIFL_Cat_forAssayDesign.txt") %>%
-  select(Individual, Subspecies_Pure, Within_Subspecies)
 
-# now left join those onto meta_full 
-new_meta_full <- meta_full %>%
-  left_join(grps, by = c("Field_Number" = "Individual")) %>%
-  select(`final-map-label`:Subspecies, Subspecies_Pure, Within_Subspecies, everything())
+grps <- meta_full %>%
+  filter(geno_method == "RAD") %>%
+  select(Field_Number, Subspecies_Pure, Within_Subspecies) %>%
+  rename(Individual = Field_Number)
 
-write_csv(new_meta_full, path = "data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv")
 ```
+
+Let's just count up how many birds we have in each group and subgroup:
+```{r count-grps, rows.print = 30}
+grps %>%
+  group_by(Subspecies_Pure, Within_Subspecies) %>%
+  tally()
+```
+This makes it clear that these categories are not strictly nested.  But we have a healthy
+number of birds to choose from for most categories, so that is good.
+
+We need to get a list of the IDs of the individuals in each of those groups:
+```{r get-lists}
+major_grps <- grps %>%
+  filter(!is.na(Subspecies_Pure)) %>%
+  split(.$Subspecies_Pure) %>%
+  lapply(., function(x) x$Individual)
+
+minor_grps <- grps %>%
+  filter(!is.na(Within_Subspecies)) %>%
+  split(.$Within_Subspecies) %>%
+  lapply(., function(x) x$Individual)
+
+# see what that looks like...
+minor_grps[1:2]
+```
+
+## Computing allele frequencies in the groups
+
+We can do that with a function from genoscapeRtools:
+```{r get-freqs}
+major_grp_freqs <- group_012_cnts(wifl_clean, major_grps)
+minor_grp_freqs <- group_012_cnts(wifl_clean, minor_grps)
+```
+
+## Doing the comparisons and computing the probability of correct assignment
+
+Here we have some code to just pick out the comparisons that
+we want to look at, and then we actually make a big data frame of all
+those comparisons.
+
+### The "major" comparisons (between subspecies level groups)
+
+```{r prep-comps}
+comps <- combn(unique(major_grp_freqs$group), 2)
+keep <- str_detect(comps, "ext") %>%
+  matrix(nrow = 2) %>%
+  colSums() < 2
+comps <- comps[, keep]
+
+major_comps <- lapply(1:ncol(comps), function(c) {
+  comp_pair(major_grp_freqs, comps[1, c], comps[2, c])
+}) %>%
+  bind_rows()
+
+# print out which comparisons those are:
+major_comps %>% group_by(comparison) %>% tally()
+
+```
+
+### The "minor" comparison (within subspecies)
+
+We will only look within subspecies in these cases
+```{r prep-comps2}
+comps2 <- combn(unique(minor_grp_freqs$group), 2)
+
+# now restrict that to just the comparisons within subspp
+pref <- str_replace_all(comps2, "_.*", "") %>%
+  matrix(nrow = 2)
+keep2 <- pref[1,] == pref[2,]
+
+comps2 <- comps2[, keep2]
+
+minor_comps <- lapply(1:ncol(comps2), function(c) {
+  comp_pair(minor_grp_freqs, comps2[1, c], comps2[2, c])
+}) %>%
+  bind_rows()
+
+# print out which comparisons that is
+minor_comps %>% group_by(comparison) %>% tally()
+```
+
+So, that is 21 comparisons, total.
+
+
+### Choosing the top 300 SNPS for each comparison
+
+This is relatively easy, it is just filtering.  We rank things and then take the top 300.  There might
+be slightly fewer than 300 SNPs if there are ties, but that is OK.  
+
+We will bind them all into a single tibble at the end.
+```{r rank-em}
+top300 <- lapply(list(major = major_comps, minor = minor_comps), function(x) {
+  x %>%
+    group_by(comparison) %>%
+    mutate(rank_full = rank(-cap)) %>%
+    filter(rank_full <= 300)
+}) %>%
+  bind_rows(.id = "type_of_comparison")
+
+# we print the first 10 line out here so it can be seen
+top300 %>%
+  ungroup() %>%
+  slice(1:10)
+```
+There are `r nrow(top300)` rows in that data frame, but the total number of unique SNPs is smaller: `r length(unique(top300$pos))`.
+
+
+## Whittling these candidates down by assayability
+
+For this, we are going to take `top300` and just filter it by whether or not it is assayable. We define it as assayable if it doesn't
+have any SNP with MAF > 0.02 (and taken from our less filtered data set where a SNP is called if it appears in at least 50% of the 
+individuals) within 20 bp.
+
+First, get that "less filtered" data. 
+This is from the  012 file with 350K SNPs:
+```{r readit, message=FALSE}
+wifl <- read_rds(path = "data/rad_wifl_less_filtered_219_349014.rds")
+```
+
+And then we assess the assayability of these all. The first thing we are going to do
+is just filter on MAF > 0.02 to get all the SNPs (all the variation, really, since
+we are going to ignore the chance of indels) that we might want to worry about as 
+far as whether they are in the flanking regions.  While we are at this, we are
+going to write all those positions to a file so we can pull them out of the 
+VCF file later so that we can get what the REF and ALT alleles are.  
+```{r snps-to-care}
+# keep track of which of the SNPs we are going to "worry about"
+# as far as whether they might be in the flanking region
+snps_to_care_about <- compile_assayable(wifl, minMAF = 0.02, flank = 20)
+
+# while we are at it.  Let's write out a tab delimited file of these positions
+# so we can easily pull them out of the VCF file later 
+snps_to_care_about %>%
+  select(snp) %>%
+  tidyr::separate(snp, into = c("CHROM", "POS"), sep = "--") %>%
+  write.table(., quote = FALSE, row.names = FALSE, col.names = FALSE, file = "outputs/002/snps-to-care-about.txt", sep = "\t")
+```
+
+Then keep track of which ones are assayable.
+```{r get-assayable}
+cassay <- snps_to_care_about %>%
+  filter(assayable == TRUE)  # we will keep only the assayable ones (possibly on edges)
+
+# have a look at the first 10 of those
+cassay %>%
+  slice(1:10)
+```
+
+
+So, now we can filter `top300` by whether they are assayable or not, and then 
+join them with the assayability information:
+```{r join-assayable, message=FALSE}
+top_assayable <- top300 %>%
+  rename(snp = pos) %>%
+  filter(snp %in% cassay$snp) %>%
+  left_join(., cassay)
+```
+That gives us `r length(unique(top_assayable$snp))` unique SNPs to play around with.  If we wanted to filter it even harder, we could
+throw out ones that were on the edges (i.e. no SNP within 1000 bp of it).  
+```{r top-edgeless}
+top_off_edge <- top_assayable %>%
+  filter(on_left_edge == FALSE, on_right_edge == FALSE)
+```
+which gives us `r length(unique(top_off_edge$snp))` unique SNPs.
+
+### Keep the top 40 assayable SNPs for each comparison
+
+Let's look at the 40 best from each 
+of the comparisons.  And we record how many of these top 40 groups each SNP is in.
+```{r looksie, rows.print=40, message=FALSE}
+
+tmp <- top_off_edge %>%
+  select(type_of_comparison, snp, leftpad, rightpad, comparison, freq.x, freq.y, ntot.x, ntot.y, cap, rank_full) %>%
+  group_by(type_of_comparison, comparison) %>%
+  top_n(40, -rank_full) %>%
+  mutate(idx = 1:n()) %>%  # this and the next two lines are just so that we get exactly
+  filter(idx <= 40) %>%    # 20---the ties usually occur when the sample size is small and so
+  select(-idx)  %>%           # it is OK to pitch them.
+  ungroup()
+
+num_occur <- tmp %>%
+  group_by(snp) %>%
+  summarise(num_comps = n())
+
+top40 <- left_join(tmp, num_occur)
+
+# have a glimpse at that:
+top40 %>%
+  slice(1:10)
+  
+```
+
+
+## Join LFMM information to these top40 markers for each comparison
+
+The LFMM scores for all SNPs were computed in @ruegg2018ecological. We
+load those values here and join them to our top40 divergence SNPs. 
+
+```{r get-lfmm, message=FALSE, warning=FALSE, rows.print=40}
+lfmm <- read_rds("data/wifl-lfmm-results.rds")
+
+# and now filter it to the smallest p-value for each snp:
+lfmm_mins <- lfmm %>%
+  group_by(snp) %>%
+  filter(fdr_p == min(fdr_p))
+
+# and now we join that on there
+top40_lfmm <- top40 %>%
+  left_join(., lfmm_mins)
+
+# print the whole thing as a CSV for inspection
+write_csv(top40_lfmm, path = "outputs/002/top40_lfmm.csv")
+
+# print the top 10 rows to this notebook
+top40_lfmm %>%
+  slice(1:10)
+```
+It is possible to flip through that and pretty quickly see what is going on.  There are `r length(unique(top40$snp))` unique SNPs there, and iut should be pretty easily whittle that down to 192, or as many as we think we might want to develop into assays.
+
+### A digression looking at the LFMM values
+
+Just for fun, let's look at the distribution of all the min LFMM p-values in these SNPs compared to all the rest:
+```{r plot-lfmm-mins}
+# first get a data frame of just one occurrence per SNP
+one_each <- top40_lfmm %>%
+  group_by(snp) %>%
+  mutate(tmp = 1:n()) %>%
+  filter(tmp == 1)
+
+# then plot
+ggplot() +
+  geom_density(data = lfmm_mins, mapping = aes(x = fdr_p), alpha = 0.5, fill = "blue") +
+  geom_density(data = one_each, mapping = aes(x = fdr_p), alpha = 0.5, fill = "orange")
+```
+
+Orange are the selected SNPs and blue are all SNPs.  We see that there is a difference
+in the distributions but that might just be because we have chosen SNPs that do not
+have very low minor allele frequencies.
+
+
+# Processing and including the "Climate-Associated SNPs"
+
+When designing this panel of Fluidigm assays, we also wanted to include
+25 SNPs that were associated with climate variables.  This work was done
+as part of @ruegg2018ecological.  Basically, we wanted to include the 5 most significant
+assayable SNPs from each of the 5 climatic variables with the highest loadings from
+@ruegg2018ecological:
+
+* **Bio11**: mean temperature of warmest quarter
+* **Bio10**: mean temperature of coldest quarter
+* **Bio5**:  max temperature of coldest month
+* **Bio9**:  mean temperature of driest month
+* **Bio17**: precipitation of driest quarter
+
+Since the most significant *assayable* loci are often shared between
+these climate variables, we end up taking the _8_ most signicant 
+assayable SNPs for each climate variable, which ends up giving us 24 unique SNPs
+that we will call the "climate-associated" SNPs.  
+```{r get-climate-snps}
+climate_vars <- c("BIO_11", "BIO_10", "BIO_5", "BIO_9", "BIO_17")
+climate_snps <- lfmm %>%
+  filter(variable %in% climate_vars) %>%
+  left_join(cassay %>% filter(on_left_edge == FALSE, on_right_edge == FALSE), .) %>%   # limit it to just the assayable ones THAT ARE NOT ON EDGES
+  group_by(variable) %>%
+  top_n(n = 8, wt = -fdr_p) %>%
+  group_by(snp) %>%
+  arrange(fdr_p) %>%
+  mutate(comparison = paste(variable, sprintf("%.2e ", fdr_p), collapse = ", "),
+         type_of_comparison = "climate") %>%
+  select(-variable, -fdr_p) %>%
+  filter(!duplicated(snp)) %>%
+  ungroup() %>%
+  select(-(num_gene_copies:rightpos), -(assayable:on_left_edge))
+
+climate_snps
+```
+
+
+# Filtering to $\approx 192$ candidate SNPs from the Climate and Divergence SNPs
+
+
+## Weighting the different comparisons for divergence SNP selection
+
+For our purposes we deemed that it was more important to be able to
+resolve individuals from some minor or major groups than others  Furthermore,
+some comparisons between groups had such low sample sizes that we chose not to
+try harvest many SNP candidates from them, and so forth.  We codified this
+by choosing the number of SNP candidates to include from each comparison in our
+final list. That data frame with those numbers is here:
+```{r, message=FALSE}
+snp_pair_wts <- read_tsv("data/wifl_snp_comparison_counts.txt")
+snp_pair_wts
+```
+
+
+
+## Picking out the SNPs
+
+We will pick out the number of SNPs from each comparison, as given above,
+and then we add the climate SNPs on top of those, and filter out any "divergence SNPs"
+that are duplicates of the climate SNPs (or other divergence SNPs) or which are
+too close, physically, to another SNP. 
+
+Because we will end up removing duplicates in this process we must start with
+more than we want at the end.  So we allow ourselve to increase the number
+SNPs taken from each comparison using the `expand_it` variable, below:
+
+```{r pick-em}
+expand_it <- 1.8  # this is the factor by which to increase the number of SNPs from each comparison
+
+div_candidates <- top40_lfmm %>%
+  left_join(snp_pair_wts) %>%
+  group_by(comparison) %>%
+  arrange(desc(cap)) %>%
+  mutate(idx = 1:n()) %>%
+  filter(idx <= (number_markers) * expand_it) %>%  # keep only a certain number from each comparison
+  ungroup() 
+
+# now, add the climate SNPs in there, filter out the duplicates, and then mark those
+# that are too close to their neighbors and count up how many we are left with
+candidate_snps <- bind_rows(climate_snps, div_candidates) %>%
+  filter(!duplicated(snp))  %>%      # filter out the duplicates from the divergence SNPs
+  tidyr::separate(snp, into = c("CHROM", "POS"), sep = "--", convert = TRUE, remove = FALSE) %>%  # get CHROM and POS back
+  arrange(CHROM, POS) %>%
+  group_by(CHROM) %>%
+  mutate(dist = POS - lag(POS, 1),
+         could_be_too_close = ifelse(!is.na(dist) & dist <= 10^4, TRUE, FALSE),       # flag them if closer than 10 KB
+         toss_it = FALSE)  # we add the toss_it column since we will modify that by hand to do final thinning
+
+# now return the approximate number after thinning
+sum(!candidate_snps$could_be_too_close)
+```
+So, that has given us, potentially, 210 candidates.  That is more than 192, but some of them 
+might not be designable because of the GC content.  But, now we need to decide which 
+ones to toss when they are too close together on the genome.  There are only a few of these 
+and it will be good to get eyes on the data anyway. So, at this point we write out the 
+file.
+
+```{r write-candidates}
+write_csv(candidate_snps, path = "outputs/002/candidate_snps_untossed.csv")
+```
+
+Subsequently we got our eyes on that output and then hand-selected
+which ones to toss by putting a "TRUE" in the "toss_it" 
+column and saving the result in exactly the same format in a file saved in
+our repository in `stored_results/candidate_snps_tossed.csv`.
+
+
+
+# Fetching Allelic types and sequences, and preparing the assay order
+
+Our list of 210 final candidates is here:
+```{r get-final-candi, message=FALSE}
+final_candidates <- read_csv("stored_results/candidate_snps_tossed.csv") %>%
+  filter(toss_it == FALSE)
+```
+
+## Getting allelic types
+
+Now, from those candidates we make a file that is tab-delimited with the name of the
+SNP we are focusing on, along with a string that can be used to pick out any variation (using tabix)
+within 250 bp of that SNP.
+
+We will make the LeftStartingPoint 250 bp to the left of POS and the RightEndPoint 250 bp
+to the right.  
+```{r make-var-regions}
+regions <- final_candidates %>% 
+  mutate(left = POS - 250,
+         right = POS + 250) %>%
+  mutate(extractor = paste(CHROM, ":", left, "-", right, sep = ""))  %>%
+  select(snp, extractor)
+
+# show the reader what this looks like
+head(regions)
+
+write.table(regions, row.names = FALSE, col.names = FALSE, quote = FALSE, sep = "\t", file = "outputs/002/regions-for-candidates.txt")
+```
+
+## Extracting positions from the VCF on the cluster
+
+For the final stage, we need to go back to the original VCF so that we know what the
+REF and ALT alleles are, so we can put together the assay order.  We 
+continue to ignore the possibility of indels, which means that we just have to 
+pull the snps that we care about out of the VCF file.  We don't need all the individual
+data on these, so I will just return info on one individual, NULL, that is not even in the 
+file.
+
+This step was done on the cluster.  Here is a transcript of the session.
+The full VCF file, with the variation at all individuals, for these steps
+is larger than we want to put in the repository.  But the important part part of the
+file which is simply the positions is included in `stored_results`.
+```{sh, eval=FALSE}
+[kruegg@n2238 WIFL_10.15.16]$ pwd
+/u/home/k/kruegg/nobackup-klohmuel/WIFL/WIFL_10.15.16
+[kruegg@n2238 WIFL_10.15.16]$ module load vcftools
+[kruegg@n2238 WIFL_10.15.16]$ module load bcftools
+
+# filter it all down....
+[kruegg@n2238 WIFL_10.15.16]$ vcftools --vcf WIFL_10.15.16.recode.vcf --out design-variants  --recode  --positions snps-to-care-about.txt --indv NULL 
+
+VCFtools - 0.1.14
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+	--vcf WIFL_10.15.16.recode.vcf
+	--out design-variants
+	--positions snps-to-care-about.txt
+	--recode
+	--indv NULL
+
+Keeping individuals in 'keep' list
+After filtering, kept 0 out of 219 Individuals
+Outputting VCF file...
+
+[kruegg@n2238 WIFL_10.15.16]$ bgzip design-variants.recode.vcf 
+
+# then that was tabix indexed.
+```
+
+`design-variants.recode.vcf` is placed in `stored_results` in the repository.
+
+## Retrieving variants that overlap our candidate regions
+
+Now, we can retrieve variants overlapping our candidate regions pretty easily,
+but we need to keep each such variant
+associated with the actual SNP, so we did that with a little
+shell programming here:
+```{sh}
+while read line; do 
+  array=($line); 
+  tabix stored_results/design-variants.recode.vcf.gz  "${array[1]}" | \
+  awk -v snp="${array[0]}" '
+    {printf("%s\t%s\n", snp, $0);}
+  ';
+done < outputs/002/regions-for-candidates.txt > outputs/002/relevant_variation.txt 
+```
+
+The result of that looks like this:
+```{sh}
+head outputs/002/relevant_variation.txt 
+```
+
+
+And now we can read that into something that will be appropriate for snps2assays:
+```{r readv, message=FALSE}
+variation <- read_tsv("outputs/002/relevant_variation.txt", col_names = FALSE) %>%
+  select(-X2, -X4, -(X7:X10)) %>%
+  setNames(c("CHROM", "truePOS", "REF", "ALT")) %>%
+  mutate(snppos = as.integer(str_replace(CHROM, "^.*--", ""))) %>%
+  mutate(POS = (truePOS - snppos) + 251) %>%
+  select(CHROM, POS, REF, ALT, truePOS)
+
+# here is what that looks like
+head(variation)
+```
+Note that we actually use the name of the SNP as if it were the "CHROM"
+because we will pull sequence out around just that spot.  And 
+POS is the position of the target SNP within that fragment
+(which is at position 251, cuz we put 250 bp of flanking region on each side.)
+
+## Getting sequences
+
+We retrieve the consensus sequences from 250 bp on either side
+of each SNP we want.  We use an ugly bash script much like with `tabix` to get the 
+consensus sequence fragments and store them in a file along with the snp name.
+```{sh}
+while read line; do 
+  array=($line); 
+  samtools faidx genome/wifl-genome.fna   "${array[1]}" | \
+  awk -v snp="${array[0]}" '
+    /^>/ {printf("%s\t", snp); next} 
+    {printf("%s", $1)} 
+    END {printf("\n")}
+  '
+done < outputs/002/regions-for-candidates.txt > outputs/002/consensus_sequences_of_snps.txt
+```
+
+Then we can read those into a data frame
+```{r read-seq, message=FALSE}
+consSeq <- read_tsv("outputs/002/consensus_sequences_of_snps.txt", col_names = FALSE) %>%
+  setNames(c("CHROM", "Seq"))
+# see what it looks like
+head(consSeq)
+```
+
+## A Data frame of targets
+
+These are just the SNPs that we want with the CHROM and POS.  (Where again, CHROM is the name of the SNP)
+```{r get-targets}
+targets <- final_candidates %>%
+  select(snp, POS) %>%
+  rename(CHROM = snp) %>%
+  mutate(
+    truePOS = POS,
+    snppos = as.integer(str_replace(CHROM, "^.*--", ""))
+  ) %>%
+  mutate(POS = (truePOS - snppos) + 251) %>%
+  select(CHROM, POS)
+
+# see what that looks like
+head(targets)
+```
+
+## Running snps2assays
+
+The moment we have all been waiting for---we want to see if this is going to work or not...
+```{r snps2assays}
+yay_assays <- assayize(V = variation, targets = targets, consSeq = consSeq, allVar = FALSE)
+
+```
+
+Then, we joined onto that a column or two that told us about why 
+any particular SNP was chosen (i.e. major or minor comparison, and its rank within those):
+```{r add-assay-rank-info}
+yay_assays_with_ranks <-  candidate_snps %>%
+  ungroup() %>%
+  select(-(CHROM:rightpad)) %>%
+  rename(CHROM = snp) %>%
+  left_join(yay_assays, .) 
+
+write_csv(yay_assays_with_ranks, path = "outputs/002/wifl-assay-candidates-with-ranks.csv")
+```
+
+
+## Spot checking if you want to
+
+Note that when I finally finished this, I hoped everything was correct, but it felt
+hard to verify things.  Turns out that you can spot check things visually using IGV.
+It's a fun way to verify that you have designed assays for SNPs in the right places.
+
+I used `samtools view` to pull the 500 bp around each 
+SNP out of the big merged bamfile (filtering on MAPQ>40).  I brought that to my laptop, sorted it
+and then indexed it, and then viewed them using IGV.  I mostly wanted to verify that I had the SNP
+in the right spot.  I spot checked a good handful and they all were correct.  
+
+# Running Time
+
+Running the code and rendering this notebook required approximately this much time
+on a Mac laptop of middling speed, listed in `HH:MM:SS`.
+```{r}
+td <- Sys.time() - start_time
+tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
+dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
+write_rds(tdf, "stored_run_times/002.rds")
+tdf
+```
+
+
+# Literature Cited 
