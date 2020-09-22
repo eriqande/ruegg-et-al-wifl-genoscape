@@ -3,6 +3,7 @@
 # get the packages needed from CRAN
 install.packages(
   c(
+    "hms",
     "knitr",
     "lubridate",
     "rmarkdown",
