@@ -49,14 +49,14 @@ primarily by Eric C. Anderson. Rmarkdown documents and scripts in the
 100 series were developed primarily by Marius Somveille.
 
 All the RMarkdown documents or scripts can be evaluated en masse by
-sourcing the R script `render-numbered-Rmds.R`. On a fairly old mac
-laptop the run times for each are as follows:
+sourcing the R script `render-numbered-Rmds-and-scripts.R`. On a fairly
+old mac laptop the run times for each are as follows:
 
     ## # A tibble: 2 x 2
     ##   File                                    `Running time in HH:MM:SS`
     ##   <chr>                                   <chr>                     
-    ## 1 001-rad-seq-data-summaries-and-pca.Rmd  00:00:45                  
-    ## 2 002-select-snps-for-assays-from-rad.Rmd 00:00:36
+    ## 1 001-rad-seq-data-summaries-and-pca.Rmd  00:00:44                  
+    ## 2 002-select-snps-for-assays-from-rad.Rmd 00:00:34
 
 # Preliminaries and Dependencies
 
@@ -173,11 +173,10 @@ remotes::install_github("eriqande/whoa")
 # RMarkdown Documents
 
 The following RMarkdown documents should be evaluated in order. The
-script `render-numbered-Rmds.R` (NOT WRITTEN YET) will do that when run
-in the top level of this repository. Some RMarkdown documents rely on
-outputs from previous ones. Some of these RMarkdown documents include
-calls to Unix utilities, so might not run on non-Unix or non-Linux
-architectures.
+script `render-numbered-Rmds-and-scripts.R` will do that when run in the
+top level of this repository. Some RMarkdown documents rely on outputs
+from previous ones. Some of these RMarkdown documents include calls to
+Unix utilities, so might not run on non-Unix or non-Linux architectures.
 
 Outputs (figures, tables, R data objects, etc) from each RMarkdown
 document are written to the `outputs/XXX` directories. Intermediate
