@@ -96,13 +96,13 @@ if(!file.exists("stored_run_times")) {
 # Preliminaries and Dependencies
 
 Below is a description of the needed dependencies.  A script to install all of
-them on one of our test clusters is at `000-00-prepare-dependencies.sh`, but it may
-likely need some tweaking on your system.
+them on one of our test clusters is at `000-00-prepare-dependencies.sh` (NOT YET INCLUDED), 
+but it may likely need some tweaking on your system.
 
 ## Unix Programs
 
 The following programs must be installed and available in the PATH. Versions
-used on Eric's laptop appear in parentheses.
+used on Eric's laptop appear in parentheses. (NOT COMPLETE YET)
 
 - `bgzip`:
 - `samtools`:
@@ -114,7 +114,8 @@ used on Eric's laptop appear in parentheses.
 Create a directory in the top level of the repository, download the willow flycatcher
 then modify the sequence names to be
 consistent with the nomenclature used in this work and index the genome (that
-nomenclature is already in in the FASTA file, but just not as the sequence name).
+nomenclature is already in in the FASTA file, but just not as the sequence name
+so, we need to only shift some words around on each sequence name line).
 ```sh
 mkdir genome
 cd genome/
@@ -142,13 +143,12 @@ samtools faidx wifl-genome.fna
 ## Geospatial data
 
 Make a directory in the top level of the repository called
-`geo-spatial` and then put some things in there:
+`geo-spatial` and then download some large files from Natural Earth Data
+to there:
 
-
-3. Download some things from Natural Earth Data:
-    - Natural Earth II with Shaded Relief, Water, and Drainages raster [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip).  Put or symlink the resulting directory, `NE2_HR_LC_SR_W_DR` into `geo-spatial`.
-    - 10m-cultural-vectors, Admin 1 – States, Provinces, Download boundary lines: [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip). Put or symlink the resulting directory, `ne_10m_admin_1_states_provinces_lines` into `geo-spatial`.
-    - Finally, get the coastlines: [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip), and put the resulting folder, `ne_10m_coastline` into `geo-spatial`.
+- Natural Earth II with Shaded Relief, Water, and Drainages raster [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip).  Put or symlink the resulting directory, `NE2_HR_LC_SR_W_DR` into `geo-spatial`.
+- 10m-cultural-vectors, Admin 1 – States, Provinces, Download boundary lines: [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip). Put or symlink the resulting directory, `ne_10m_admin_1_states_provinces_lines` into `geo-spatial`.
+- Finally, get the coastlines: [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip), and put the resulting folder, `ne_10m_coastline` into `geo-spatial`.
 
 
 
@@ -156,7 +156,8 @@ Make a directory in the top level of the repository called
 ## Java jars
 
 The following Java-based programs must be downloaded, and the paths to their
-associated Jar files must be listed appropriately in the file `script/java-jar-paths.R`:
+associated Jar files must be listed appropriately in the file `script/java-jar-paths.R`.
+(NO JAVA JARS NEEDED AT THIS TIME...)
 
 
 ## R Packages

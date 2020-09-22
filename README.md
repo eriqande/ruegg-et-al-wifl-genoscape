@@ -3,6 +3,7 @@ Ruegg et. al., WIFL Genoscape, Data and Code Repository
 Kristen Ruegg, Eric C. Anderson, Marius Somvielle, Rachael A. Bay,
 Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith
 
+  - [Overview](#overview)
   - [Preliminaries and Dependencies](#preliminaries-and-dependencies)
       - [Unix Programs](#unix-programs)
       - [Genomic resources](#genomic-resources)
@@ -11,9 +12,12 @@ Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith
       - [R Packages](#r-packages)
   - [RMarkdown Documents](#rmarkdown-documents)
       - [001-rad-seq-data-summaries-and-pca.Rmd](#rad-seq-data-summaries-and-pca.rmd)
-      - [References](#references)
+      - [002-select-snps-for-assays-from-rad.Rmd](#select-snps-for-assays-from-rad.rmd)
+      - [Literature Cited](#literature-cited)
 
 **Last Updated:** 2020-09-22
+
+# Overview
 
 This repository includes code, data, and some intermediate results to
 reproduce the results in Ruegg et al. (“Seasonal niche breadth predicts
@@ -58,13 +62,13 @@ laptop the run times for each are as follows:
 
 Below is a description of the needed dependencies. A script to install
 all of them on one of our test clusters is at
-`000-00-prepare-dependencies.sh`, but it may likely need some tweaking
-on your system.
+`000-00-prepare-dependencies.sh` (NOT YET INCLUDED), but it may likely
+need some tweaking on your system.
 
 ## Unix Programs
 
 The following programs must be installed and available in the PATH.
-Versions used on Eric’s laptop appear in parentheses.
+Versions used on Eric’s laptop appear in parentheses. (NOT COMPLETE YET)
 
   - `bgzip`:
   - `samtools`:
@@ -76,7 +80,8 @@ Create a directory in the top level of the repository, download the
 willow flycatcher then modify the sequence names to be consistent with
 the nomenclature used in this work and index the genome (that
 nomenclature is already in in the FASTA file, but just not as the
-sequence name).
+sequence name so, we need to only shift some words around on each
+sequence name line).
 
 ``` sh
 mkdir genome
@@ -105,28 +110,26 @@ samtools faidx wifl-genome.fna
 ## Geospatial data
 
 Make a directory in the top level of the repository called `geo-spatial`
-and then put some things in there:
+and then download some large files from Natural Earth Data to there:
 
-3.  Download some things from Natural Earth Data:
-      - Natural Earth II with Shaded Relief, Water, and Drainages raster
-        <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip>.
-        Put or symlink the resulting directory, `NE2_HR_LC_SR_W_DR` into
-        `geo-spatial`.
-      - 10m-cultural-vectors, Admin 1 – States, Provinces, Download
-        boundary lines:
-        <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip>.
-        Put or symlink the resulting directory,
-        `ne_10m_admin_1_states_provinces_lines` into `geo-spatial`.
-      - Finally, get the coastlines:
-        <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip>,
-        and put the resulting folder, `ne_10m_coastline` into
-        `geo-spatial`.
+  - Natural Earth II with Shaded Relief, Water, and Drainages raster
+    <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip>.
+    Put or symlink the resulting directory, `NE2_HR_LC_SR_W_DR` into
+    `geo-spatial`.
+  - 10m-cultural-vectors, Admin 1 – States, Provinces, Download boundary
+    lines:
+    <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip>.
+    Put or symlink the resulting directory,
+    `ne_10m_admin_1_states_provinces_lines` into `geo-spatial`.
+  - Finally, get the coastlines:
+    <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip>,
+    and put the resulting folder, `ne_10m_coastline` into `geo-spatial`.
 
 ## Java jars
 
 The following Java-based programs must be downloaded, and the paths to
 their associated Jar files must be listed appropriately in the file
-`script/java-jar-paths.R`:
+`script/java-jar-paths.R`. (NO JAVA JARS NEEDED AT THIS TIME…)
 
 ## R Packages
 
@@ -140,6 +143,7 @@ and install the necessary packages:
 # get the packages needed from CRAN
 install.packages(
   c(
+    "hms",
     "knitr",
     "lubridate",
     "rmarkdown",
@@ -169,35 +173,44 @@ remotes::install_github("eriqande/whoa")
 # RMarkdown Documents
 
 The following RMarkdown documents should be evaluated in order. The
-script `render-numbered-Rmds.R` will do that (except for
-`002-allele-frequencies.Rmd`) when run in the top level of this
-repository. Some RMarkdown documents rely on outputs from previous ones.
-Some of these RMarkdown documents include calls to Unix utilities, so
-might not run on non-Unix or non-Linux architectures.
+script `render-numbered-Rmds.R` (NOT WRITTEN YET) will do that when run
+in the top level of this repository. Some RMarkdown documents rely on
+outputs from previous ones. Some of these RMarkdown documents include
+calls to Unix utilities, so might not run on non-Unix or non-Linux
+architectures.
 
 Outputs (figures, tables, R data objects, etc) from each RMarkdown
 document are written to the `outputs/XXX` directories. Intermediate
 files written during evaluation of each RMarkdown document are written
-to the `intermediates/XXX` directories. To facilitate working between
-the cluster and a desktop/laptop, some outputs are written to the
-`stored_results/XXX` directories which are version controlled and
-included in this repo.
+to the `intermediates/XXX` directories (THOUGH I MIGHT NOT USE
+intermediates AT ALL). To facilitate working between the cluster and a
+desktop/laptop, some outputs are written to the `stored_results/XXX`
+directories which are version controlled and included in this repo.
 
 Thumbnails of the figures and tables generated by each RMarkdown
-document appear below. Additionally, at the top of each section is a
-link to the compiled (HTML-version) of the RMarkdown document on GitHub
-Pages.
+document appear below (NOT YET). Additionally, at the top of each
+section is a link to the compiled (HTML-version) of the RMarkdown
+document on GitHub Pages.
 
 ## 001-rad-seq-data-summaries-and-pca.Rmd
 
 (*Compiled RMarkdown HTML document on GitHub Pages:*
-[001-rad-seq-data-summaries-and-pca.html](./001-rad-seq-data-summaries-and-pca.html))
+[001-rad-seq-data-summaries-and-pca.html](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/001-rad-seq-data-summaries-and-pca.html))
 
 Summarizing the RAD seq data, filtering out obvious paralogs and
 monomorphic sites, then producing a PCA plot and estimates of pairwise
 \(F_\mathrm{ST}\).
 
-## References
+## 002-select-snps-for-assays-from-rad.Rmd
+
+(*Compiled RMarkdown HTML document on GitHub Pages:*
+[002-select-snps-for-assays-from-rad.html](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/002-select-snps-for-assays-from-rad.html))
+
+All the steps we went through to rank SNPs for ability to resolve
+different populations/subspecies, and then the workflow for designing
+Fluidigm assays from them.
+
+## Literature Cited
 
 <div id="refs" class="references">
 

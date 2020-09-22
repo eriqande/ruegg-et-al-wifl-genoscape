@@ -1674,10 +1674,10 @@ All the RMarkdown documents or scripts can be evaluated en masse by sourcing the
 </div>
 <div id="preliminaries-and-dependencies" class="section level1">
 <h1>Preliminaries and Dependencies</h1>
-<p>Below is a description of the needed dependencies. A script to install all of them on one of our test clusters is at <code>000-00-prepare-dependencies.sh</code>, but it may likely need some tweaking on your system.</p>
+<p>Below is a description of the needed dependencies. A script to install all of them on one of our test clusters is at <code>000-00-prepare-dependencies.sh</code> (NOT YET INCLUDED), but it may likely need some tweaking on your system.</p>
 <div id="unix-programs" class="section level2">
 <h2>Unix Programs</h2>
-<p>The following programs must be installed and available in the PATH. Versions used on Eric’s laptop appear in parentheses.</p>
+<p>The following programs must be installed and available in the PATH. Versions used on Eric’s laptop appear in parentheses. (NOT COMPLETE YET)</p>
 <ul>
 <li><code>bgzip</code>:</li>
 <li><code>samtools</code>:</li>
@@ -1686,7 +1686,7 @@ All the RMarkdown documents or scripts can be evaluated en masse by sourcing the
 </div>
 <div id="genomic-resources" class="section level2">
 <h2>Genomic resources</h2>
-<p>Create a directory in the top level of the repository, download the willow flycatcher then modify the sequence names to be consistent with the nomenclature used in this work and index the genome (that nomenclature is already in in the FASTA file, but just not as the sequence name).</p>
+<p>Create a directory in the top level of the repository, download the willow flycatcher then modify the sequence names to be consistent with the nomenclature used in this work and index the genome (that nomenclature is already in in the FASTA file, but just not as the sequence name so, we need to only shift some words around on each sequence name line).</p>
 <pre class="sh"><code>mkdir genome
 cd genome/
 wget ftp://ftp.ncbi.nlm.nih.gov/genomes/genbank/vertebrate_other/Empidonax_traillii/latest_assembly_versions/GCA_003031625.1_ASM303162v1/GCA_003031625.1_ASM303162v1_genomic.fna.gz
@@ -1711,19 +1711,16 @@ samtools faidx wifl-genome.fna</code></pre>
 </div>
 <div id="geospatial-data" class="section level2">
 <h2>Geospatial data</h2>
-<p>Make a directory in the top level of the repository called <code>geo-spatial</code> and then put some things in there:</p>
-<ol start="3" style="list-style-type: decimal">
-<li>Download some things from Natural Earth Data:
+<p>Make a directory in the top level of the repository called <code>geo-spatial</code> and then download some large files from Natural Earth Data to there:</p>
 <ul>
 <li>Natural Earth II with Shaded Relief, Water, and Drainages raster <a href="https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip">https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip</a>. Put or symlink the resulting directory, <code>NE2_HR_LC_SR_W_DR</code> into <code>geo-spatial</code>.</li>
 <li>10m-cultural-vectors, Admin 1 – States, Provinces, Download boundary lines: <a href="https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip">https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip</a>. Put or symlink the resulting directory, <code>ne_10m_admin_1_states_provinces_lines</code> into <code>geo-spatial</code>.</li>
 <li>Finally, get the coastlines: <a href="https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip">https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip</a>, and put the resulting folder, <code>ne_10m_coastline</code> into <code>geo-spatial</code>.</li>
-</ul></li>
-</ol>
+</ul>
 </div>
 <div id="java-jars" class="section level2">
 <h2>Java jars</h2>
-<p>The following Java-based programs must be downloaded, and the paths to their associated Jar files must be listed appropriately in the file <code>script/java-jar-paths.R</code>:</p>
+<p>The following Java-based programs must be downloaded, and the paths to their associated Jar files must be listed appropriately in the file <code>script/java-jar-paths.R</code>. (NO JAVA JARS NEEDED AT THIS TIME…)</p>
 </div>
 <div id="r-packages" class="section level2">
 <h2>R Packages</h2>
