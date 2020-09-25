@@ -42,32 +42,32 @@ sr <- proj4string(hexgrid3_stem)
 
 ##  Load climate data  ##
 
-Temp.raster.nov <- raster("WorldClim_2_5min/Temperature/tmean/tmean_11")
-Temp.raster.dec <- raster("WorldClim_2_5min/Temperature/tmean/tmean_12")
-Temp.raster.jan <- raster("WorldClim_2_5min/Temperature/tmean/tmean_1")
-Temp.raster.feb <- raster("WorldClim_2_5min/Temperature/tmean/tmean_2")
-Temp.raster.mar <- raster("WorldClim_2_5min/Temperature/tmean/tmean_3")
-Temp.raster.apr <- raster("WorldClim_2_5min/Temperature/tmean/tmean_4")
+Temp.raster.nov <- raster("Climate-data/Temperature/tmean_11")
+Temp.raster.dec <- raster("Climate-data/Temperature/tmean_12")
+Temp.raster.jan <- raster("Climate-data/Temperature/tmean_1")
+Temp.raster.feb <- raster("Climate-data/Temperature/tmean_2")
+Temp.raster.mar <- raster("Climate-data/Temperature/tmean_3")
+Temp.raster.apr <- raster("Climate-data/Temperature/tmean_4")
 Temp.raster.winter <- (Temp.raster.nov + Temp.raster.dec + Temp.raster.jan + Temp.raster.feb + Temp.raster.mar + Temp.raster.apr) / 6
 Temp.raster.winter <- Temp.raster.winter/10
 
-Temp.raster.jun <- raster("WorldClim_2_5min/Temperature/tmean/tmean_6")
-Temp.raster.jul <- raster("WorldClim_2_5min/Temperature/tmean/tmean_7")
-Temp.raster.aug <- raster("WorldClim_2_5min/Temperature/tmean/tmean_8")
+Temp.raster.jun <- raster("Climate-data/Temperature/tmean_6")
+Temp.raster.jul <- raster("Climate-data/Temperature/tmean_7")
+Temp.raster.aug <- raster("Climate-data/Temperature/tmean_8")
 Temp.raster.summer <- (Temp.raster.jun + Temp.raster.jul + Temp.raster.aug) / 3
 Temp.raster.summer <- Temp.raster.summer/10
 
-Prec.raster.nov <- raster("WorldClim_2_5min/Precipitation/prec/prec_11")
-Prec.raster.dec <- raster("WorldClim_2_5min/Precipitation/prec/prec_12")
-Prec.raster.jan <- raster("WorldClim_2_5min/Precipitation/prec/prec_1")
-Prec.raster.feb <- raster("WorldClim_2_5min/Precipitation/prec/prec_2")
-Prec.raster.mar <- raster("WorldClim_2_5min/Precipitation/prec/prec_3")
-Prec.raster.apr <- raster("WorldClim_2_5min/Precipitation/prec/prec_4")
+Prec.raster.nov <- raster("Climate-data/Precipitation/prec_11")
+Prec.raster.dec <- raster("Climate-data/Precipitation/prec_12")
+Prec.raster.jan <- raster("Climate-data/Precipitation/prec_1")
+Prec.raster.feb <- raster("Climate-data/Precipitation/prec_2")
+Prec.raster.mar <- raster("Climate-data/Precipitation/prec_3")
+Prec.raster.apr <- raster("Climate-data/Precipitation/prec_4")
 Prec.raster.winter <- (Prec.raster.nov + Prec.raster.dec + Prec.raster.jan + Prec.raster.feb + Prec.raster.mar + Prec.raster.apr) / 6
 
-Prec.raster.jun <- raster("WorldClim_2_5min/Precipitation/prec/prec_6")
-Prec.raster.jul <- raster("WorldClim_2_5min/Precipitation/prec/prec_7")
-Prec.raster.aug <- raster("WorldClim_2_5min/Precipitation/prec/prec_8")
+Prec.raster.jun <- raster("Climate-data/Precipitation/prec_6")
+Prec.raster.jul <- raster("Climate-data/Precipitation/prec_7")
+Prec.raster.aug <- raster("Climate-data/Precipitation/prec_8")
 Prec.raster.summer <- (Prec.raster.jun + Prec.raster.jul + Prec.raster.aug) / 3
 
 

@@ -125,6 +125,14 @@ and then download some large files from Natural Earth Data to there:
     <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip>,
     and put the resulting folder, `ne_10m_coastline` into `geo-spatial`.
 
+## Climate data
+
+Make a directory in the top level of the repository called `climate-data`
+and then download some large files from WorldClim: 
+<https://worldclim.org/data/worldclim21.html>
+Download average temperature and precipitation at 2.5 minutes resolution
+In the `climate-data` directory, make directories `Temperature` and `Precipitation` and put the corresponing downloaded dataset in each one.
+
 ## Java jars
 
 The following Java-based programs must be downloaded, and the paths to
