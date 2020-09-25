@@ -128,9 +128,11 @@ and then download some large files from Natural Earth Data to there:
 ## Climate data
 
 Make a directory in the top level of the repository called `climate-data`
-and then download some large files from WorldClim: 
+and then download some large files from WorldClim at 
 <https://worldclim.org/data/worldclim21.html>
+
 Download average temperature and precipitation at 2.5 minutes resolution
+
 In the `climate-data` directory, make directories `Temperature` and `Precipitation` and put the corresponing downloaded dataset in each one.
 
 ## Java jars
