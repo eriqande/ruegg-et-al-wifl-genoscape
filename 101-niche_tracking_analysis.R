@@ -22,6 +22,8 @@ library(RColorBrewer)
 library(rnaturalearth)
 library(rnaturalearthdata)
 
+dir.create("outputs/101", showWarnings = FALSE, recursive = TRUE)
+
 ##  Construct an hexagon grid covering the region of interest  ##
 
 hexgrid <- dgconstruct(projection="ISEA", topology="HEXAGON", res=7, metric=T)
@@ -383,7 +385,7 @@ tibbleVar.points <- lapply(bigList.points, function(x){
 
 ##  Plot niches  ##
 
-pdf("Figure_nicheTracking.pdf", width=6, height=10)
+pdf("outputs/101/Figure_nicheTracking.pdf", width=6, height=10)
 theme_set(theme_light())
 ggplot(tibbleVar.niche, aes(x = x, y = y)) + 
   geom_raster(aes(fill = forColor)) +
@@ -409,7 +411,7 @@ dev.off()
 
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
-pdf("Figure_nicheTracking_maps.pdf", width=3, height=10)
+pdf("outputs/101/Figure_nicheTracking_maps.pdf", width=3, height=10)
 
 theme_set(theme_classic())
 
