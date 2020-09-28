@@ -8,6 +8,9 @@ Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith
       - [Unix Programs](#unix-programs)
       - [Genomic resources](#genomic-resources)
       - [Geospatial data](#geospatial-data)
+      - [Climate Data](#climate-data)
+          - [Here is Eric’s attempt on
+            it:](#here-is-erics-attempt-on-it)
       - [Java jars](#java-jars)
       - [R Packages](#r-packages)
   - [RMarkdown Documents](#rmarkdown-documents)
@@ -15,7 +18,7 @@ Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith
       - [002-select-snps-for-assays-from-rad.Rmd](#select-snps-for-assays-from-rad.rmd)
   - [Literature Cited](#literature-cited)
 
-**Last Updated:** 2020-09-22
+**Last Updated:** 2020-09-28
 
 # Overview
 
@@ -125,13 +128,34 @@ and then download some large files from Natural Earth Data to there:
     <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip>,
     and put the resulting folder, `ne_10m_coastline` into `geo-spatial`.
 
-## Climate data
+## Climate Data
 
-Make a directory in the top level of the repository called `climate-data` with sub-directories `Temperature` and `Precipitation`. 
+Make a directory in the top level of the repository called
+`Climate-data` with sub-directories `Temperature` and `Precipitation`.
+Download average temperature and precipitation at 2.5 minutes resolution
+from WorldClim at <https://worldclim.org/data/worldclim21.html>, and put
+the data into the corresponding sub-directories.
 
-Download average temperature and precipitation at 2.5 minutes resolution from WorldClim at 
-<https://worldclim.org/data/worldclim21.html>, and put the data into the corresponding sub-directories.
+### Here is Eric’s attempt on it:
 
+Make a directory in the top level of the repository called
+`Climate-data`. Change into that directory and download the average
+temperature and precipitation at 2.5 minutes resolution from WorldClim
+<https://worldclim.org/data/worldclim21.html>. Unzip the downloads
+within `Climate-data` leaving you with the directories `wc2.1_2.5m_tavg`
+and
+
+``` sh
+mkdir Climate-data
+cd Climate-data
+wget http://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_2.5m_tavg.zip
+wget http://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_2.5m_prec.zip
+unzip wc2.1_2.5m_tavg.zip
+unzip wc2.1_2.5m_prec.zip
+rm -f wc2.1_2.5m_tavg.zip
+rm -f wc2.1_2.5m_prec.zip
+cd ../
+```
 
 ## Java jars
 
@@ -151,13 +175,35 @@ and install the necessary packages:
 # get the packages needed from CRAN
 install.packages(
   c(
+    "ade4",
+    "car",
+    "dggridR",
+    "ebirdst",
+    "ecospat",
+    "emdist",
+    "fields",
+    "geosphere",
+    "gridExtra",
     "hms",
+    "igraph",
+    "inlabru",
     "knitr",
     "lubridate",
+    "mapplots",
+    "MASS",
+    "move",
+    "raster",
+    "RColorBrewer",
+    "reticulate",
+    "rgeos",
     "rmarkdown",
+    "rnaturalearth",
+    "rnaturalearthdata",
     "rubias",
+    "rworldmap",
     "sessioninfo",
     "sf",
+    "sp",
     "tidyverse"
   ),
   repos = "http://cran.rstudio.com"

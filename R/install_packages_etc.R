@@ -11,6 +11,7 @@ install.packages(
     "emdist",
     "fields",
     "geosphere",
+    "gridExtra",
     "hms",
     "igraph",
     "inlabru",

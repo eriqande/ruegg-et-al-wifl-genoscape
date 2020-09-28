@@ -1645,6 +1645,9 @@ summary {
 <li><a href="#unix-programs">Unix Programs</a></li>
 <li><a href="#genomic-resources">Genomic resources</a></li>
 <li><a href="#geospatial-data">Geospatial data</a></li>
+<li><a href="#climate-data">Climate Data</a><ul>
+<li><a href="#here-is-erics-attempt-on-it">Here is Eric’s attempt on it:</a></li>
+</ul></li>
 <li><a href="#java-jars">Java jars</a></li>
 <li><a href="#r-packages">R Packages</a></li>
 </ul></li>
@@ -1656,7 +1659,7 @@ summary {
 </ul>
 </div>
 
-<p><strong>Last Updated:</strong> 2020-09-22</p>
+<p><strong>Last Updated:</strong> 2020-09-28</p>
 <div id="overview" class="section level1">
 <h1>Overview</h1>
 <p>This repository includes code, data, and some intermediate results to reproduce the results in Ruegg et al. (“Seasonal niche breadth predicts population declines in a long-distance migratory bird”). You can get the whole thing by cloning or downloading the repo from <a href="https://github.com/eriqande/ruegg-et-al-wifl-genoscape">https://github.com/eriqande/ruegg-et-al-wifl-genoscape</a>.</p>
@@ -1718,6 +1721,23 @@ samtools faidx wifl-genome.fna</code></pre>
 <li>Finally, get the coastlines: <a href="https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip">https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip</a>, and put the resulting folder, <code>ne_10m_coastline</code> into <code>geo-spatial</code>.</li>
 </ul>
 </div>
+<div id="climate-data" class="section level2">
+<h2>Climate Data</h2>
+<p>Make a directory in the top level of the repository called <code>Climate-data</code> with sub-directories <code>Temperature</code> and <code>Precipitation</code>. Download average temperature and precipitation at 2.5 minutes resolution from WorldClim at <a href="https://worldclim.org/data/worldclim21.html">https://worldclim.org/data/worldclim21.html</a>, and put the data into the corresponding sub-directories.</p>
+<div id="here-is-erics-attempt-on-it" class="section level3">
+<h3>Here is Eric’s attempt on it:</h3>
+<p>Make a directory in the top level of the repository called <code>Climate-data</code>. Change into that directory and download the average temperature and precipitation at 2.5 minutes resolution from WorldClim <a href="https://worldclim.org/data/worldclim21.html">https://worldclim.org/data/worldclim21.html</a>. Unzip the downloads within <code>Climate-data</code> leaving you with the directories <code>wc2.1_2.5m_tavg</code> and</p>
+<pre class="sh"><code>mkdir Climate-data
+cd Climate-data
+wget http://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_2.5m_tavg.zip
+wget http://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_2.5m_prec.zip
+unzip wc2.1_2.5m_tavg.zip
+unzip wc2.1_2.5m_prec.zip
+rm -f wc2.1_2.5m_tavg.zip
+rm -f wc2.1_2.5m_prec.zip
+cd ../</code></pre>
+</div>
+</div>
 <div id="java-jars" class="section level2">
 <h2>Java jars</h2>
 <p>The following Java-based programs must be downloaded, and the paths to their associated Jar files must be listed appropriately in the file <code>script/java-jar-paths.R</code>. (NO JAVA JARS NEEDED AT THIS TIME…)</p>
@@ -1730,13 +1750,35 @@ samtools faidx wifl-genome.fna</code></pre>
 # get the packages needed from CRAN
 install.packages(
   c(
+    &quot;ade4&quot;,
+    &quot;car&quot;,
+    &quot;dggridR&quot;,
+    &quot;ebirdst&quot;,
+    &quot;ecospat&quot;,
+    &quot;emdist&quot;,
+    &quot;fields&quot;,
+    &quot;geosphere&quot;,
+    &quot;gridExtra&quot;,
     &quot;hms&quot;,
+    &quot;igraph&quot;,
+    &quot;inlabru&quot;,
     &quot;knitr&quot;,
     &quot;lubridate&quot;,
+    &quot;mapplots&quot;,
+    &quot;MASS&quot;,
+    &quot;move&quot;,
+    &quot;raster&quot;,
+    &quot;RColorBrewer&quot;,
+    &quot;reticulate&quot;,
+    &quot;rgeos&quot;,
     &quot;rmarkdown&quot;,
+    &quot;rnaturalearth&quot;,
+    &quot;rnaturalearthdata&quot;,
     &quot;rubias&quot;,
+    &quot;rworldmap&quot;,
     &quot;sessioninfo&quot;,
     &quot;sf&quot;,
+    &quot;sp&quot;,
     &quot;tidyverse&quot;
   ),
   repos = &quot;http://cran.rstudio.com&quot;

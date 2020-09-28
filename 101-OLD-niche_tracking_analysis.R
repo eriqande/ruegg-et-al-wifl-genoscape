@@ -1,9 +1,3 @@
-
-# some code for timing how long this takes
-knitr::opts_chunk$set(message = FALSE)
-start_time <- Sys.time()
-
-
 library(geosphere)
 library(fields)
 library(MASS)
@@ -50,31 +44,41 @@ sr <- proj4string(hexgrid3_stem)
 
 ##  Load climate data  ##
 
-months <- sprintf("%02d", 1:12)
-names(months) <- months
-# make a rasterStack of temperature months
-Temp_stack <- lapply(
-  months,
-  function(m) raster(paste0("Climate-data/wc2.1_2.5m_tavg/wc2.1_2.5m_tavg_", m, ".tif"))
-) %>%
-  stack()
-Prec_stack <- lapply(
-    months,
-    function(m) raster(paste0("Climate-data/wc2.1_2.5m_prec/wc2.1_2.5m_prec_", m, ".tif"))
-  ) %>%
-  stack()
+Temp.raster.nov <- raster("Climate-data/Temperature/tmean_11")
+Temp.raster.dec <- raster("Climate-data/Temperature/tmean_12")
+Temp.raster.jan <- raster("Climate-data/Temperature/tmean_1")
+Temp.raster.feb <- raster("Climate-data/Temperature/tmean_2")
+Temp.raster.mar <- raster("Climate-data/Temperature/tmean_3")
+Temp.raster.apr <- raster("Climate-data/Temperature/tmean_4")
+Temp.raster.winter <- (Temp.raster.nov + Temp.raster.dec + Temp.raster.jan + Temp.raster.feb + Temp.raster.mar + Temp.raster.apr) / 6
+Temp.raster.winter <- Temp.raster.winter/10
 
-Temp.raster.winter <- calc(Temp_stack[[c(11:12,1:4)]], fun = mean) / 10
-Temp.raster.summer <- calc(Temp_stack[[6:8]], fun = mean) / 10
-Prec.raster.winter <- calc(Prec_stack[[c(11:12,1:4)]], fun = mean)
-Prec.raster.summer <- calc(Prec_stack[[6:8]], fun = mean)
+Temp.raster.jun <- raster("Climate-data/Temperature/tmean_6")
+Temp.raster.jul <- raster("Climate-data/Temperature/tmean_7")
+Temp.raster.aug <- raster("Climate-data/Temperature/tmean_8")
+Temp.raster.summer <- (Temp.raster.jun + Temp.raster.jul + Temp.raster.aug) / 3
+Temp.raster.summer <- Temp.raster.summer/10
+
+Prec.raster.nov <- raster("Climate-data/Precipitation/prec_11")
+Prec.raster.dec <- raster("Climate-data/Precipitation/prec_12")
+Prec.raster.jan <- raster("Climate-data/Precipitation/prec_1")
+Prec.raster.feb <- raster("Climate-data/Precipitation/prec_2")
+Prec.raster.mar <- raster("Climate-data/Precipitation/prec_3")
+Prec.raster.apr <- raster("Climate-data/Precipitation/prec_4")
+Prec.raster.winter <- (Prec.raster.nov + Prec.raster.dec + Prec.raster.jan + Prec.raster.feb + Prec.raster.mar + Prec.raster.apr) / 6
+
+Prec.raster.jun <- raster("Climate-data/Precipitation/prec_6")
+Prec.raster.jul <- raster("Climate-data/Precipitation/prec_7")
+Prec.raster.aug <- raster("Climate-data/Precipitation/prec_8")
+Prec.raster.summer <- (Prec.raster.jun + Prec.raster.jul + Prec.raster.aug) / 3
+
 
 ##  Extract climate data onto the hexagon grid  ##
 
-Temp.hex.winter <- raster::extract(Temp.raster.winter, hexgrid3_stem, fun=mean, na.rm=T)
-Temp.hex.summer <- raster::extract(Temp.raster.summer, hexgrid3_stem, fun=mean, na.rm=T)
-Prec.hex.winter <- raster::extract(Prec.raster.winter, hexgrid3_stem, fun=mean, na.rm=T)
-Prec.hex.summer <- raster::extract(Prec.raster.summer, hexgrid3_stem, fun=mean, na.rm=T)
+Temp.hex.winter <- extract(Temp.raster.winter, hexgrid3_stem, fun=mean, na.rm=T)
+Temp.hex.summer <- extract(Temp.raster.summer, hexgrid3_stem, fun=mean, na.rm=T)
+Prec.hex.winter <- extract(Prec.raster.winter, hexgrid3_stem, fun=mean, na.rm=T)
+Prec.hex.summer <- extract(Prec.raster.summer, hexgrid3_stem, fun=mean, na.rm=T)
 
 
 ##  Standardize climate data  ##
@@ -141,7 +145,7 @@ breedingHexagons2 <- unique(breedingHexagons)
 popBR <- as.character(breeding.assignments$Assignment)
 popBR <- popBR[toKeep] # population assignment of breeding individuals
 
-# Wintering individuals
+# Wintering individuals 
 wintering.assignments <- individual.assignements[which(individual.assignements$Stage == "Wintering"),]
 ptsNB <- as.matrix(cbind(wintering.assignments$Long, wintering.assignments$Lat)) # location of wintering individuals
 sptsNB <- SpatialPoints(ptsNB)
@@ -159,7 +163,7 @@ popNB <- popNB[toKeep] # population assignment of wintering individuals
 
 # Function to estimate seasonal climatic niche
 nicheDensityRaster <- function(seasonalNiche){
-  niche.kernel <- kde2d(seasonalNiche[,1], seasonalNiche[,2], n=50, h=1, lims=c(-1.5,3, -1.5,3))
+  niche.kernel <- kde2d(seasonalNiche[,1], seasonalNiche[,2], n=50, h=1, lims=c(-1.5,3, -1.5,3)) 
   niche.kernel$z = niche.kernel$z/max(niche.kernel$z)
   niche.raster <- raster(niche.kernel)
   threshold=0; i=0
@@ -168,7 +172,7 @@ nicheDensityRaster <- function(seasonalNiche){
     threshold = threshold + sort(as.vector(niche.raster), decreasing=T)[i]
   }
   niche.raster[which(as.vector(niche.raster) < sort(as.vector(niche.raster), decreasing=T)[i])] = 0
-  niche.raster = niche.raster / sum(as.vector(niche.raster))
+  niche.raster = niche.raster / sum(as.vector(niche.raster))	
   return(niche.raster)
 }
 
@@ -247,24 +251,24 @@ niche.overlap.WIFL <- 1 - (0.5 * (sum(abs(density.breeding.WIFL - density.winter
 ##  Prepare data frame for plotting niche density kernels  ##
 
 breedingNicheRasters <- list(
-  WIFL = breeding.niche.WIFL,
-  EST = breeding.niche.EST,
-  INW = breeding.niche.INW,
-  PNW = breeding.niche.PNW,
+  WIFL = breeding.niche, 
+  EST = breeding.niche.EST, 
+  INW = breeding.niche.INW, 
+  PNW = breeding.niche.PNW, 
   SSW = breeding.niche.SSW
 )
 winteringNicheRasters <- list(
-  WIFL = wintering.niche.WIFL,
-  EST = wintering.niche.EST,
-  INW = wintering.niche.INW,
-  PNW = wintering.niche.PNW,
+  WIFL = wintering.niche, 
+  EST = wintering.niche.EST, 
+  INW = wintering.niche.INW, 
+  PNW = wintering.niche.PNW, 
   SSW = wintering.niche.SSW
 )
 totalNicheRasters <- list(
-  WIFL = total.niche.WIFL,
-  EST = total.niche.EST,
-  INW = total.niche.INW,
-  PNW = total.niche.PNW,
+  WIFL = total.niche, 
+  EST = total.niche.EST, 
+  INW = total.niche.INW, 
+  PNW = total.niche.PNW, 
   SSW = total.niche.SSW
 )
 
@@ -280,22 +284,34 @@ tibbleVar.niche <- lapply(bigList.niche, function(x){
 }) %>%
   bind_rows(.id = "seasonality") %>%
   mutate(
-    season_f = factor(seasonality, levels=c("Breeding niche", "Wintering niche", "Total niche")),
+    season_f = factor(seasonality, levels=c("Breeding niche", "Wintering niche", "Total niche")), 
     region_f = factor(region, levels=c("WIFL", "EST", "INW", "PNW", "SSW"))
-  ) %>%
-  mutate(
-    forColor = case_when(
-      val > 0.012 ~ "col5",
-      val > 0.009 ~ "col4",
-      val > 0.006 ~ "col3",
-      val > 0.003 ~ "col2",
-      val > 0     ~ "col1",
-      TRUE        ~ "zero"
-    ),
-    forColor = paste(region, "–", forColor)
   )
 
-
+# Create an additional column that will be used for determining colours for plotting
+tibbleVar.niche$forColor <- 
+  ifelse(
+    tibbleVar.niche$val > 0.012,
+    "col5", 
+    ifelse(
+      tibbleVar.niche$val>0.009,
+      "col4", 
+      ifelse(
+        tibbleVar.niche$val>0.006, 
+        "col3", 
+        ifelse(
+          tibbleVar.niche$val>0.003, 
+          "col2", 
+          ifelse(
+            tibbleVar.niche$val>0, 
+            "col1", 
+            "zero"
+          )
+        )
+      )
+    )
+  )
+tibbleVar.niche$forColor <- paste(tibbleVar.niche$region, "–", tibbleVar.niche$forColor)
 
 
 ##  Prepare data frame for plotting points in niche space  ##
@@ -311,32 +327,32 @@ outsidePoint.SSW <- which(is.na(breedingPoints_inHexagons_SSW)==T)
 
 # Breeding individuals inside the population polygon to which they are assigned
 breedingNichePoints.in <- list(
-  WIFL = cbind(Temp.summer.zscore[breedingHexagons], Prec.summer.zscore[breedingHexagons], "in"),
-  EST = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "EST")]][-outsidePoint.EST], Prec.summer.zscore[breedingHexagons[which(popBR == "EST")]][-outsidePoint.EST], "in"),
-  INW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "INW")]][-outsidePoint.INW], Prec.summer.zscore[breedingHexagons[which(popBR == "INW")]][-outsidePoint.INW], "in"),
-  PNW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "PNW")]][-outsidePoint.PNW], Prec.summer.zscore[breedingHexagons[which(popBR == "PNW")]][-outsidePoint.PNW], "in"),
+  WIFL = cbind(Temp.summer.zscore[breedingHexagons], Prec.summer.zscore[breedingHexagons], "in"), 
+  EST = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "EST")]][-outsidePoint.EST], Prec.summer.zscore[breedingHexagons[which(popBR == "EST")]][-outsidePoint.EST], "in"), 
+  INW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "INW")]][-outsidePoint.INW], Prec.summer.zscore[breedingHexagons[which(popBR == "INW")]][-outsidePoint.INW], "in"), 
+  PNW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "PNW")]][-outsidePoint.PNW], Prec.summer.zscore[breedingHexagons[which(popBR == "PNW")]][-outsidePoint.PNW], "in"), 
   SSW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "SSW")]][-outsidePoint.SSW], Prec.summer.zscore[breedingHexagons[which(popBR == "SSW")]][-outsidePoint.SSW], "in")
 )
 # Breeding individuals outside the population polygon to which they are assigned
 breedingNichePoints.out <- list(
-  WIFL = NULL,
-  EST = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "EST")]][outsidePoint.EST], Prec.summer.zscore[breedingHexagons[which(popBR == "EST")]][outsidePoint.EST], "out"),
-  INW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "INW")]][outsidePoint.INW], Prec.summer.zscore[breedingHexagons[which(popBR == "INW")]][outsidePoint.INW], "out"),
-  PNW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "PNW")]][outsidePoint.PNW], Prec.summer.zscore[breedingHexagons[which(popBR == "PNW")]][outsidePoint.PNW], "out"),
+  WIFL = NULL, 
+  EST = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "EST")]][outsidePoint.EST], Prec.summer.zscore[breedingHexagons[which(popBR == "EST")]][outsidePoint.EST], "out"), 
+  INW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "INW")]][outsidePoint.INW], Prec.summer.zscore[breedingHexagons[which(popBR == "INW")]][outsidePoint.INW], "out"), 
+  PNW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "PNW")]][outsidePoint.PNW], Prec.summer.zscore[breedingHexagons[which(popBR == "PNW")]][outsidePoint.PNW], "out"), 
   SSW = cbind(Temp.summer.zscore[breedingHexagons[which(popBR == "SSW")]][outsidePoint.SSW], Prec.summer.zscore[breedingHexagons[which(popBR == "SSW")]][outsidePoint.SSW], "out")
 )
 winteringNichePoints <- list(
-  WIFL = cbind(Temp.winter.zscore[winteringHexagons], Prec.winter.zscore[winteringHexagons], "in"),
-  EST = cbind(Temp.winter.zscore[winteringHexagons[which(popNB == "EST")]], Prec.winter.zscore[winteringHexagons[which(popNB == "EST")]], "in"),
-  INW = cbind(Temp.winter.zscore[winteringHexagons[which(popNB == "INW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "INW")]], "in"),
-  PNW = cbind(Temp.winter.zscore[winteringHexagons[which(popNB == "PNW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "PNW")]], "in"),
+  WIFL = cbind(Temp.winter.zscore[winteringHexagons], Prec.winter.zscore[winteringHexagons], "in"), 
+  EST = cbind(Temp.winter.zscore[winteringHexagons[which(popNB == "EST")]], Prec.winter.zscore[winteringHexagons[which(popNB == "EST")]], "in"), 
+  INW = cbind(Temp.winter.zscore[winteringHexagons[which(popNB == "INW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "INW")]], "in"), 
+  PNW = cbind(Temp.winter.zscore[winteringHexagons[which(popNB == "PNW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "PNW")]], "in"), 
   SSW = cbind(Temp.winter.zscore[winteringHexagons[which(popNB == "SSW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "SSW")]], "in")
 )
 TotalNichePoints <- list(
-  WIFL = cbind(c(Temp.summer.zscore[breedingHexagons], Temp.winter.zscore[winteringHexagons]), c(Prec.summer.zscore[breedingHexagons], Prec.winter.zscore[winteringHexagons]), "in"),
-  EST = cbind(c(Temp.summer.zscore[breedingHexagons[which(popBR == "EST")]], Temp.winter.zscore[winteringHexagons[which(popNB == "EST")]]), c(Prec.summer.zscore[breedingHexagons[which(popBR == "EST")]], Prec.winter.zscore[winteringHexagons[which(popNB == "EST")]]), "in"),
-  INW = cbind(c(Temp.summer.zscore[breedingHexagons[which(popBR == "INW")]], Temp.winter.zscore[winteringHexagons[which(popNB == "INW")]]), c(Prec.summer.zscore[breedingHexagons[which(popBR == "INW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "INW")]]), "in"),
-  PNW = cbind(c(Temp.summer.zscore[breedingHexagons[which(popBR == "PNW")]], Temp.winter.zscore[winteringHexagons[which(popNB == "PNW")]]), c(Prec.summer.zscore[breedingHexagons[which(popBR == "PNW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "PNW")]]), "in"),
+  WIFL = cbind(c(Temp.summer.zscore[breedingHexagons], Temp.winter.zscore[winteringHexagons]), c(Prec.summer.zscore[breedingHexagons], Prec.winter.zscore[winteringHexagons]), "in"), 
+  EST = cbind(c(Temp.summer.zscore[breedingHexagons[which(popBR == "EST")]], Temp.winter.zscore[winteringHexagons[which(popNB == "EST")]]), c(Prec.summer.zscore[breedingHexagons[which(popBR == "EST")]], Prec.winter.zscore[winteringHexagons[which(popNB == "EST")]]), "in"), 
+  INW = cbind(c(Temp.summer.zscore[breedingHexagons[which(popBR == "INW")]], Temp.winter.zscore[winteringHexagons[which(popNB == "INW")]]), c(Prec.summer.zscore[breedingHexagons[which(popBR == "INW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "INW")]]), "in"), 
+  PNW = cbind(c(Temp.summer.zscore[breedingHexagons[which(popBR == "PNW")]], Temp.winter.zscore[winteringHexagons[which(popNB == "PNW")]]), c(Prec.summer.zscore[breedingHexagons[which(popBR == "PNW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "PNW")]]), "in"), 
   SSW = cbind(c(Temp.summer.zscore[breedingHexagons[which(popBR == "SSW")]], Temp.winter.zscore[winteringHexagons[which(popNB == "SSW")]]), c(Prec.summer.zscore[breedingHexagons[which(popBR == "SSW")]], Prec.winter.zscore[winteringHexagons[which(popNB == "SSW")]]), "in")
 )
 
@@ -362,7 +378,7 @@ tibbleVar.points <- lapply(bigList.points, function(x){
 }) %>%
   bind_rows(.id = "seasonality") %>%
   mutate(
-    season_f = factor(seasonality, levels=c("Breeding niche", "Wintering niche", "Total niche")),
+    season_f = factor(seasonality, levels=c("Breeding niche", "Wintering niche", "Total niche")), 
     region_f = factor(region, levels=c("WIFL", "EST", "INW", "PNW", "SSW"))
   )
 
@@ -371,7 +387,7 @@ tibbleVar.points <- lapply(bigList.points, function(x){
 
 pdf("outputs/101/Figure_nicheTracking.pdf", width=6, height=10)
 theme_set(theme_light())
-ggplot(tibbleVar.niche, aes(x = x, y = y)) +
+ggplot(tibbleVar.niche, aes(x = x, y = y)) + 
   geom_raster(aes(fill = forColor)) +
   scale_x_continuous(limits = c(-0.8, 1.8)) +
   scale_fill_manual(values = c(brewer.pal(5, "Blues"), "white",
@@ -380,11 +396,11 @@ ggplot(tibbleVar.niche, aes(x = x, y = y)) +
                                brewer.pal(5, "Oranges"), "white",
                                brewer.pal(5, "Greys"), "white"
   )
-  ) +
+  ) + 
   geom_point(data=tibbleVar.points, size=0.8, aes(shape=inout)) +
   geom_contour(data = tibbleVar.niche, aes(x = x, y = y, z = val), col="grey47", binwidth=0.003, size=0.2, lty=1) +
   geom_contour(data = tibbleVar.niche, aes(x = x, y = y, z = val), col="grey47", breaks=0.0000001, size=0.2, lty=2) +
-  facet_grid(region_f ~ season_f, switch = "y") +
+  facet_grid(region_f ~ season_f, switch = "y") + 
   labs(x="Temperature", y="Precipitation") +
   scale_y_continuous(position = "right") +
   theme(legend.position = "none", strip.placement = "outside")
@@ -420,11 +436,11 @@ p1.EST <- ggplot() +
 # Add summer range
 p1.EST <- p1.EST + geom_polygon(data=hexgrid3_stem[which(EST>0),], aes(x=long, y=lat, group=group)) + geom_polygon(colour="grey47", fill="grey47")
 # Add breeding and wintering locations
-p1.EST <- p1.EST + geom_point(aes(x=ptsBR[which(popBR=="EST"),][,1][-outsidePoint.EST], y=ptsBR[which(popBR=="EST"),][,2][-outsidePoint.EST]), color="#377eb8", size=0.7, shape=1)
+p1.EST <- p1.EST + geom_point(aes(x=ptsBR[which(popBR=="EST"),][,1][-outsidePoint.EST], y=ptsBR[which(popBR=="EST"),][,2][-outsidePoint.EST]), color="#377eb8", size=0.7, shape=1) 
 p1.EST <- p1.EST + geom_point(aes(x=ptsBR[which(popBR=="EST"),][,1][outsidePoint.EST], y=ptsBR[which(popBR=="EST"),][,2][outsidePoint.EST]), color="#377eb8", size=0.7, shape=2)
-p1.EST <- p1.EST + geom_point(aes(x=ptsNB[which(popNB=="EST"),][,1], y=ptsNB[which(popNB=="EST"),][,2]), color="#377eb8", size=0.7, shape=1)
+p1.EST <- p1.EST + geom_point(aes(x=ptsNB[which(popNB=="EST"),][,1], y=ptsNB[which(popNB=="EST"),][,2]), color="#377eb8", size=0.7, shape=1) 
 
-# INW ##
+## INW ##
 p1.INW <- ggplot() +
   geom_sf(data = world, color="grey65", fill="grey65") +
   coord_sf(xlim = c(-140, -55), ylim = c(-5, 62), expand = FALSE) +
@@ -433,9 +449,9 @@ p1.INW <- ggplot() +
 # Add summer range
 p1.INW <- p1.INW + geom_polygon(data=hexgrid3_stem[which(INW>0),], aes(x=long, y=lat, group=group)) + geom_polygon(colour="grey47", fill="grey47")
 # Add breeding and wintering locations
-p1.INW <- p1.INW + geom_point(aes(x=ptsBR[which(popBR=="INW"),][,1][-outsidePoint.INW], y=ptsBR[which(popBR=="INW"),][,2][-outsidePoint.INW]), color="#984ea3", size=0.7, pch=1)
-p1.INW <- p1.INW + geom_point(aes(x=ptsBR[which(popBR=="INW"),][,1][outsidePoint.INW], y=ptsBR[which(popBR=="INW"),][,2][outsidePoint.INW]), color="#984ea3", size=0.7, pch=2)
-p1.INW <- p1.INW + geom_point(aes(x=ptsNB[which(popNB=="INW"),][,1], y=ptsNB[which(popNB=="INW"),][,2]), color="#984ea3", size=0.7, pch=1)
+p1.INW <- p1.INW + geom_point(aes(x=ptsBR[which(popBR=="INW"),][,1][-outsidePoint.INW], y=ptsBR[which(popBR=="INW"),][,2][-outsidePoint.INW]), color="#984ea3", size=0.7, pch=1) 
+p1.INW <- p1.INW + geom_point(aes(x=ptsBR[which(popBR=="INW"),][,1][outsidePoint.INW], y=ptsBR[which(popBR=="INW"),][,2][outsidePoint.INW]), color="#984ea3", size=0.7, pch=2) 
+p1.INW <- p1.INW + geom_point(aes(x=ptsNB[which(popNB=="INW"),][,1], y=ptsNB[which(popNB=="INW"),][,2]), color="#984ea3", size=0.7, pch=1) 
 
 ## PNW ##
 p1.PNW <- ggplot() +
@@ -446,11 +462,11 @@ p1.PNW <- ggplot() +
 # Add summer range
 p1.PNW <- p1.PNW + geom_polygon(data=hexgrid3_stem[which(PNW>0),], aes(x=long, y=lat, group=group)) + geom_polygon(colour="grey47", fill="grey47")
 # Add breeding and wintering locations
-p1.PNW <- p1.PNW + geom_point(aes(x=ptsBR[which(popBR=="PNW"),][,1][-outsidePoint.PNW], y=ptsBR[which(popBR=="PNW"),][,2][-outsidePoint.PNW]), color="#4daf4a", size=0.7, pch=1)
-p1.PNW <- p1.PNW + geom_point(aes(x=ptsBR[which(popBR=="PNW"),][,1][outsidePoint.PNW], y=ptsBR[which(popBR=="PNW"),][,2][outsidePoint.PNW]), color="#4daf4a", size=0.7, pch=2)
-p1.PNW <- p1.PNW + geom_point(aes(x=ptsNB[which(popNB=="PNW"),][,1], y=ptsNB[which(popNB=="PNW"),][,2]), color="#4daf4a", size=0.7, pch=1)
+p1.PNW <- p1.PNW + geom_point(aes(x=ptsBR[which(popBR=="PNW"),][,1][-outsidePoint.PNW], y=ptsBR[which(popBR=="PNW"),][,2][-outsidePoint.PNW]), color="#4daf4a", size=0.7, pch=1) 
+p1.PNW <- p1.PNW + geom_point(aes(x=ptsBR[which(popBR=="PNW"),][,1][outsidePoint.PNW], y=ptsBR[which(popBR=="PNW"),][,2][outsidePoint.PNW]), color="#4daf4a", size=0.7, pch=2) 
+p1.PNW <- p1.PNW + geom_point(aes(x=ptsNB[which(popNB=="PNW"),][,1], y=ptsNB[which(popNB=="PNW"),][,2]), color="#4daf4a", size=0.7, pch=1) 
 
-## SSW ##
+## SSW ## 
 p1.SSW <- ggplot() +
   geom_sf(data = world, color="grey65", fill="grey65") +
   coord_sf(xlim = c(-140, -55), ylim = c(-5, 62), expand = FALSE) +
@@ -459,20 +475,11 @@ p1.SSW <- ggplot() +
 # Add summer range
 p1.SSW <- p1.SSW + geom_polygon(data=hexgrid3_stem[which(SSW>0),], aes(x=long, y=lat, group=group)) + geom_polygon(colour="grey47", fill="grey47")
 # Add breeding and wintering locations
-p1.SSW <- p1.SSW + geom_point(aes(x=ptsBR[which(popBR=="SSW"),][,1][-outsidePoint.SSW], y=ptsBR[which(popBR=="SSW"),][,2][-outsidePoint.SSW]), color="#ff7f00", size=0.7, pch=1)
-p1.SSW <- p1.SSW + geom_point(aes(x=ptsBR[which(popBR=="SSW"),][,1][outsidePoint.SSW], y=ptsBR[which(popBR=="SSW"),][,2][outsidePoint.SSW]), color="#ff7f00", size=0.7, pch=2)
-p1.SSW <- p1.SSW + geom_point(aes(x=ptsNB[which(popNB=="SSW"),][,1], y=ptsNB[which(popNB=="SSW"),][,2]), color="#ff7f00", size=0.7, pch=1)
+p1.SSW <- p1.SSW + geom_point(aes(x=ptsBR[which(popBR=="SSW"),][,1][-outsidePoint.SSW], y=ptsBR[which(popBR=="SSW"),][,2][-outsidePoint.SSW]), color="#ff7f00", size=0.7, pch=1) 
+p1.SSW <- p1.SSW + geom_point(aes(x=ptsBR[which(popBR=="SSW"),][,1][outsidePoint.SSW], y=ptsBR[which(popBR=="SSW"),][,2][outsidePoint.SSW]), color="#ff7f00", size=0.7, pch=2) 
+p1.SSW <- p1.SSW + geom_point(aes(x=ptsNB[which(popNB=="SSW"),][,1], y=ptsNB[which(popNB=="SSW"),][,2]), color="#ff7f00", size=0.7, pch=1) 
 
-gridExtra::grid.arrange(p1, p1.EST, p1.INW, p1.PNW, p1.SSW, nrow = 5)
+grid.arrange(p1, p1.EST, p1.INW, p1.PNW, p1.SSW, nrow = 5)
 
 dev.off()
-
-
-
-# Stuff for recording how long it took to run this:
-td <- Sys.time() - start_time
-tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
-dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
-write_rds(tdf, "stored_run_times/101.rds")
-tdf
 
