@@ -251,21 +251,21 @@ niche.overlap.WIFL <- 1 - (0.5 * (sum(abs(density.breeding.WIFL - density.winter
 ##  Prepare data frame for plotting niche density kernels  ##
 
 breedingNicheRasters <- list(
-  WIFL = breeding.niche, 
+  WIFL = breeding.niche.WIFL, 
   EST = breeding.niche.EST, 
   INW = breeding.niche.INW, 
   PNW = breeding.niche.PNW, 
   SSW = breeding.niche.SSW
 )
 winteringNicheRasters <- list(
-  WIFL = wintering.niche, 
+  WIFL = wintering.niche.WIFL, 
   EST = wintering.niche.EST, 
   INW = wintering.niche.INW, 
   PNW = wintering.niche.PNW, 
   SSW = wintering.niche.SSW
 )
 totalNicheRasters <- list(
-  WIFL = total.niche, 
+  WIFL = total.niche.WIFL, 
   EST = total.niche.EST, 
   INW = total.niche.INW, 
   PNW = total.niche.PNW, 
