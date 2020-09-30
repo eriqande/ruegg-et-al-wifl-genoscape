@@ -590,9 +590,25 @@ yay_assays_with_ranks <-  candidate_snps %>%
   ungroup() %>%
   select(-(CHROM:rightpad)) %>%
   rename(CHROM = snp) %>%
-  left_join(yay_assays, .) 
+  left_join(yay_assays, .)
+```
 
-write_csv(yay_assays_with_ranks, path = "outputs/002/wifl-assay-candidates-with-ranks.csv")
+## Giving shorter names to these assays
+
+Ultimately, we ended up naming the assays according to which of the comparisons it
+appeared they were useful for, and their rank within each of those comparisons.
+Those names, paired with the `CHROM--POS` specification of the SNP, is stored
+in the repository in `/data/wifl-snp-short-names.tsv`.  We joinn them to
+`yay_assays_with_ranks` before writing that object out as a CSV file.
+
+```{r}
+snp_names <- read_tsv("data/wifl-snp-short-names.tsv") %>%
+  rename(CHROM = `snp_as_CHROM--POS`)
+
+yay_assays_with_ranks %>%
+  left_join(snp_names, by = "CHROM") %>%
+  select(snp_short_name, everything()) %>%
+  write_csv(path = "outputs/002/wifl-assay-candidates-with-ranks.csv")
 ```
 
 
