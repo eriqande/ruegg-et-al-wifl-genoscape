@@ -153,14 +153,13 @@ to there:
 
 ## Climate Data
 
-Make a directory in the top level of the repository called `Climate-data` with sub-directories `Temperature` and `Precipitation`. Download average temperature and precipitation at 2.5 minutes resolution from WorldClim at [https://worldclim.org/data/worldclim21.html](https://worldclim.org/data/worldclim21.html), and put the data into the corresponding sub-directories.
-
-### Here is Eric's attempt on it:
-
 Make a directory in the top level of the repository called `Climate-data`. Change into that
 directory and download the average temperature and precipitation at 2.5 minutes resolution
 from WorldClim [https://worldclim.org/data/worldclim21.html](https://worldclim.org/data/worldclim21.html).
-Unzip the downloads within `Climate-data` leaving you with the directories `wc2.1_2.5m_tavg` and
+Unzip the downloads within `Climate-data`.  Depending on the method used to unzip things, this might
+leave you with the directories `wc2.1_2.5m_tavg` and `wc2.1_2.5m_prec`.  Or it might not.  The important
+thing is that you want all the actual tif files to be placed immediately within the `Climate-data`
+directory. So, you might have to move all of those files out of `wc2.1_2.5m_tavg` and `wc2.1_2.5m_prec`.
 
 ```sh
 mkdir Climate-data
@@ -171,9 +170,24 @@ unzip wc2.1_2.5m_tavg.zip
 unzip wc2.1_2.5m_prec.zip
 rm -f wc2.1_2.5m_tavg.zip
 rm -f wc2.1_2.5m_prec.zip
+mv wc2.1_2.5m_tavg/* wc2.1_2.5m_prec/* ./
+rmdir wc2.1_2.5m_tavg wc2.1_2.5m_prec
 cd ../
 ```
-
+Nite, when done with this, the listing of the `Climate-data` directory
+looks like:
+```sh
+# ls Climate-data/*
+Climate-data/readme.txt*             Climate-data/wc2.1_2.5m_prec_09.tif  Climate-data/wc2.1_2.5m_tavg_06.tif
+Climate-data/wc2.1_2.5m_prec_01.tif  Climate-data/wc2.1_2.5m_prec_10.tif  Climate-data/wc2.1_2.5m_tavg_07.tif
+Climate-data/wc2.1_2.5m_prec_02.tif  Climate-data/wc2.1_2.5m_prec_11.tif  Climate-data/wc2.1_2.5m_tavg_08.tif
+Climate-data/wc2.1_2.5m_prec_03.tif  Climate-data/wc2.1_2.5m_prec_12.tif  Climate-data/wc2.1_2.5m_tavg_09.tif
+Climate-data/wc2.1_2.5m_prec_04.tif  Climate-data/wc2.1_2.5m_tavg_01.tif  Climate-data/wc2.1_2.5m_tavg_10.tif
+Climate-data/wc2.1_2.5m_prec_05.tif  Climate-data/wc2.1_2.5m_tavg_02.tif  Climate-data/wc2.1_2.5m_tavg_11.tif
+Climate-data/wc2.1_2.5m_prec_06.tif  Climate-data/wc2.1_2.5m_tavg_03.tif  Climate-data/wc2.1_2.5m_tavg_12.tif
+Climate-data/wc2.1_2.5m_prec_07.tif  Climate-data/wc2.1_2.5m_tavg_04.tif
+Climate-data/wc2.1_2.5m_prec_08.tif  Climate-data/wc2.1_2.5m_tavg_05.tif
+```
 
 ## Java jars
 
