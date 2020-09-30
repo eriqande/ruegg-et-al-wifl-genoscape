@@ -32,8 +32,8 @@ dir.create("outputs/101", showWarnings = FALSE, recursive = TRUE)
 
 ##  Construct an hexagon grid covering the region of interest  ##
 
-hexgrid <- dgconstruct(projection="ISEA", topology="HEXAGON", res=7, metric=T)
-hexgrid_center <- dgSEQNUM_to_GEO(hexgrid, 1:21872) # 65612 / 590492
+hexgrid <- dgconstruct(projection="ISEA", topology="HEXAGON", res=9, metric=T)
+hexgrid_center <- dgSEQNUM_to_GEO(hexgrid, 1:196832)
 hexgrid_centroids <- cbind(hexgrid_center$lon_deg, hexgrid_center$lat_deg)
 hex_sel <- which(hexgrid_centroids[,1] < -30 & hexgrid_centroids[,1] > -170 & hexgrid_centroids[,2] > -60 & hexgrid_centroids[,2] < 80)
 hexgrid2_stem <- dgcellstogrid(hexgrid, hex_sel, frame=F,wrapcells=TRUE)
@@ -55,17 +55,17 @@ names(months) <- months
 # make a rasterStack of temperature months
 Temp_stack <- lapply(
   months,
-  function(m) raster(paste0("Climate-data/wc2.1_2.5m_tavg/wc2.1_2.5m_tavg_", m, ".tif"))
+  function(m) raster(paste0("Climate-data/wc2.1_2.5m_tavg_", m, ".tif"))
 ) %>%
   stack()
 Prec_stack <- lapply(
     months,
-    function(m) raster(paste0("Climate-data/wc2.1_2.5m_prec/wc2.1_2.5m_prec_", m, ".tif"))
+    function(m) raster(paste0("Climate-data/wc2.1_2.5m_prec_", m, ".tif"))
   ) %>%
   stack()
 
-Temp.raster.winter <- calc(Temp_stack[[c(11:12,1:4)]], fun = mean) / 10
-Temp.raster.summer <- calc(Temp_stack[[6:8]], fun = mean) / 10
+Temp.raster.winter <- calc(Temp_stack[[c(11:12,1:4)]], fun = mean)
+Temp.raster.summer <- calc(Temp_stack[[6:8]], fun = mean)
 Prec.raster.winter <- calc(Prec_stack[[c(11:12,1:4)]], fun = mean)
 Prec.raster.summer <- calc(Prec_stack[[6:8]], fun = mean)
 
