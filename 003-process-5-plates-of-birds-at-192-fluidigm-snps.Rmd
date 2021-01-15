@@ -1,0 +1,211 @@
+---
+title: "Process the first five plates of birds typed at 192 SNPs (on two plates of Fluidigm assays)"
+author: "Eric C. Anderson"
+date: "Last Updated: `r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+  html_notebook:
+    toc: true
+bibliography: references.bib
+---
+
+In this notebook, we process the raw output of the 192 SNPs that are on two plates of assays on Fluidigm chips to
+store the results in an R-friendly format.  We did 6 plates of birds named
+`Plate_1`, `Plate_2`, `Plate_3`, `Plate_8`, `Plate_9`, and `Plate_10`.  On each
+plate there are 94 birds (plus 2 no-template-controls). Each plate was assayed with two different
+panels of 96 SNPs, `Panel1` and `Panel2`, respectively.  So, in total, for this section of the project,
+we ran 12 Fluidigm chips, giving us data on 564 birds at 192 SNP assays.
+
+Here, we process the call-map output from the Fludigm software to make genotype files that
+are easily read by different programs, and by R.  The call-map CSV files here have been
+converted to have Unix line endings (from the PC line endings that they typically have
+by default.)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+start_time <- Sys.time()
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+
+dir.create("outputs/003", recursive = TRUE, showWarnings = FALSE)
+```
+
+# Read the chips and process with shell scripts
+
+```{sh, results='hide'}
+# run things through some scripts
+cd data/fluidigm_panel_1_and_2_chips; 
+
+../../script/process-fluidigm-call-map-results.sh Plate*_Panel1.csv; 
+mv AllFiles_TwoCol.txt ../../outputs/003/panel1_all_two_col.txt; 
+mv AllZeroReports.txt ../../outputs/003/panel1_zero_reports.txt;
+# clean up all the intermediate files
+rm *gsisim* *twocol* xxxtempxxx
+
+../../script/process-fluidigm-call-map-results.sh Plate*_Panel2.csv; 
+mv AllFiles_TwoCol.txt ../../outputs/003/panel2_all_two_col.txt; 
+mv AllZeroReports.txt ../../outputs/003/panel2_zero_reports.txt;
+# clean up all the intermediate files
+rm *gsisim* *twocol* xxxtempxxx
+
+```
+
+# Read into R, join the two panels, and write them all out
+
+Join the panels. 
+
+```{r, message=FALSE, warning=FALSE}
+# then read them in
+panel1 <- read_tsv("outputs/003/panel1_all_two_col.txt")
+panel2 <- read_tsv("outputs/003/panel2_all_two_col.txt")
+
+# then join them
+both <- left_join(panel1, panel2) %>%
+  rename(Field_Number = Sample_ID)
+```
+
+That is 564 rows (individuals) corresponding to 94 birds per plate for 6 plates.
+
+
+
+
+
+
+# Now, make the genotype calls 0,1,2 and name the loci by scaffold and position so that these can be combined with the RAD data
+
+To do this, we put it all in long format, and then it is entirely easier to deal with downstream:
+```{r}
+nc <- ncol(both)
+# name the gene copies .1 and .2
+names(both)[seq(2, nc, by = 2)] <- paste(
+  names(both)[seq(2, nc, by = 2)], 
+  ".1", 
+  sep = ""
+)
+names(both)[seq(3, nc, by = 2)] <- str_replace(
+  names(both)[seq(3, nc, by = 2)], 
+  "_1$", 
+  ".2"
+)
+
+genos_long <- both %>%
+  pivot_longer(
+    cols = -Field_Number,
+    names_to = "locgc",
+    values_to = "allele"
+  ) %>%
+  separate(locgc, into = c("assay_name", "gene_copy"), sep = "\\.") %>%
+  mutate(
+    allele_ACGT = recode(
+      allele,
+      `1` = "A",
+      `2` = "C",
+      `3` = "G",
+      `4` = "T",
+      `0` = NA_character_
+    )
+  )
+
+```
+
+Then we have to associate the assay names with the names based on scaffold
+and position and the REF and ALT at each of those.
+```{r}
+assay_meta <- read_csv("data/WIFL_fluidigm_assay_info.csv") %>%
+  dplyr::select(SNP_Name, CHROM, REF, ALT)
+
+genos_long2 <- left_join(
+  genos_long,
+  assay_meta,
+  by = c("assay_name" = "SNP_Name")
+) %>%
+  mutate(
+    allele_01 = case_when( # here we code alleles as 0 = REF, 1 = ALT, NA = missing
+      is.na(allele_ACGT) ~ NA_integer_,
+      allele_ACGT == REF ~ 0L,
+      allele_ACGT == ALT ~ 1L,
+      TRUE ~ -999L
+    )
+  )
+
+
+```
+
+That is a long format that is worth seeing, because it will make it fairly straightforward
+to combine different data sets, etc.  Here is what it looks like:
+```{r}
+head(genos_long2)
+```
+
+We write those genotypes out in case we need them later.
+```{r}
+dir.create("outputs/003", showWarnings = FALSE, recursive = TRUE)
+write_rds(genos_long2, file = "outputs/003/564_birds_at_192_fluidigm_snps.rds", compress = "xz")
+```
+
+# Extract the birds that were identified as breeders from the above
+
+We also attach some other names to them, for the structure runs, etc.
+
+```{r}
+app1_SI_1 <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv") 
+
+fluidigm_breeder_names <- app1_SI_1 %>%
+  filter(geno_method == "fluidigm") %>%
+  select(Field_Number, short_name, group_af_short_name, geno_method, Stage)
+
+fluidigm_breeders_long <- inner_join(fluidigm_breeder_names, genos_long2, by = "Field_Number")
+
+```
+
+
+# Check on the extent of missing data, and drop high-missing loci
+
+```{r}
+miss_rates <- fluidigm_breeders_long %>%
+  group_by(CHROM) %>%
+  summarise(miss_fract = mean(is.na(allele_ACGT)))
+
+ggplot(miss_rates, aes(x = miss_fract)) +
+  geom_histogram(binwidth = 0.01) +
+  geom_vline(xintercept = 0.1, linetype = "dashed")
+```
+The dashed line there shows a 10% cutoff, which is what we applied to toss out other loci.
+
+Here are the loci that we toss:
+```{r}
+toss_em <- miss_rates %>%
+  filter(miss_fract > 0.1) %>%
+  arrange(desc(miss_fract))
+toss_em
+```
+Remove those to make our final data set of Fluidigm-typed breeders and write it out.
+```{r}
+final_fluidigm_breeders_182_loci_393_birds_long <- fluidigm_breeders_long %>%
+  anti_join(toss_em, by = "CHROM")
+write_rds(
+  final_fluidigm_breeders_182_loci_393_birds_long,
+  file = "outputs/003/final_fluidigm_breeders_182_loci_393_birds_long.rds",
+  compress = "xz"
+)
+```
+
+# Running Time
+
+Running the code and rendering this notebook required approximately this much time
+on a Mac laptop of middling speed, listed in `HH:MM:SS`.
+```{r}
+td <- Sys.time() - start_time
+tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
+dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
+write_rds(tdf, "stored_run_times/003.rds")
+tdf
+```
+
+
+# Literature Cited 

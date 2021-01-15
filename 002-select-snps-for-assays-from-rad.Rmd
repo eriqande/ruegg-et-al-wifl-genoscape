@@ -188,7 +188,7 @@ individuals) within 20 bp.
 First, get that "less filtered" data. 
 This is from the  012 file with 350K SNPs:
 ```{r readit, message=FALSE}
-wifl <- read_rds(path = "data/rad_wifl_less_filtered_219_349014.rds")
+wifl <- read_rds(file = "data/rad_wifl_less_filtered_219_349014.rds")
 ```
 
 And then we assess the assayability of these all. The first thing we are going to do
@@ -283,7 +283,7 @@ top40_lfmm <- top40 %>%
   left_join(., lfmm_mins)
 
 # print the whole thing as a CSV for inspection
-write_csv(top40_lfmm, path = "outputs/002/top40_lfmm.csv")
+write_csv(top40_lfmm, file = "outputs/002/top40_lfmm.csv")
 
 # print the top 10 rows to this notebook
 top40_lfmm %>%
@@ -411,7 +411,7 @@ and it will be good to get eyes on the data anyway. So, at this point we write o
 file.
 
 ```{r write-candidates}
-write_csv(candidate_snps, path = "outputs/002/candidate_snps_untossed.csv")
+write_csv(candidate_snps, file = "outputs/002/candidate_snps_untossed.csv")
 ```
 
 Subsequently we got our eyes on that output and then hand-selected
@@ -608,7 +608,7 @@ snp_names <- read_tsv("data/wifl-snp-short-names.tsv") %>%
 yay_assays_with_ranks %>%
   left_join(snp_names, by = "CHROM") %>%
   select(snp_short_name, everything()) %>%
-  write_csv(path = "outputs/002/wifl-assay-candidates-with-ranks.csv")
+  write_csv(file = "outputs/002/wifl-assay-candidates-with-ranks.csv")
 ```
 
 
@@ -635,5 +635,10 @@ write_rds(tdf, "stored_run_times/002.rds")
 tdf
 ```
 
+# Session Info
+
+```{r}
+sessioninfo::session_info()
+```
 
 # Literature Cited 

@@ -28,7 +28,7 @@ dir.create("outputs/001", recursive = TRUE, showWarnings = FALSE)
 # Load RAD data and filter obvious paralogs
 
 ```{r}
-rad <- read_rds(path = "data/rad_wifl_clean_175_105000.rds")
+rad <- read_rds(file = "data/rad_wifl_clean_175_105000.rds")
 
 # number of individuals and SNPs in this matrix:
 dim(rad)
@@ -220,10 +220,11 @@ better to geography) and "prettified" using image editing software.
 
 Thisis a single step with genoscapeRtools:
 ```{r}
-FST <- meta %>%
+sample_tibble <- meta %>%
   filter(Field_Number %in% rownames(rad3)) %>%
-  rename(sample = Field_Number, group = repunit) %>%
-  pairwise_fst(rad3, .)
+  rename(sample = Field_Number, group = repunit)
+  
+FST <- pairwise_fst(rad3, sample_groups = sample_tibble)
 ```
 
 Now, let's just write those results out to a CSV file.
@@ -262,5 +263,10 @@ write_rds(tdf, "stored_run_times/001.rds")
 tdf
 ```
 
+# Session Info
+
+```{r}
+sessioninfo::session_info()
+```
 
 # Literature Cited
