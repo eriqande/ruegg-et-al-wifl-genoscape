@@ -2,7 +2,9 @@
 
 files <- c(
   "001-rad-seq-data-summaries-and-pca.Rmd",
-  "002-select-snps-for-assays-from-rad.Rmd"
+  "002-select-snps-for-assays-from-rad.Rmd",
+  "003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd",
+  "004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd"
 )
 
 for(f in files) {

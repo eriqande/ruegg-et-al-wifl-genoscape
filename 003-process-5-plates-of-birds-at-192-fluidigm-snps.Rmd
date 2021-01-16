@@ -131,7 +131,8 @@ genos_long2 <- left_join(
       allele_ACGT == ALT ~ 1L,
       TRUE ~ -999L
     )
-  )
+  ) %>%
+  rename(CHROMPOS = CHROM)
 
 
 ```
@@ -150,7 +151,9 @@ write_rds(genos_long2, file = "outputs/003/564_birds_at_192_fluidigm_snps.rds", 
 
 # Extract the birds that were identified as breeders from the above
 
-We also attach some other names to them, for the structure runs, etc.
+We also attach some other names to them, for the structure runs, etc.  And we record
+their 012 genos, as well (albeit in two rows for each locus by individual), but we
+can always slice those out as need be.
 
 ```{r}
 app1_SI_1 <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv") 
@@ -159,7 +162,10 @@ fluidigm_breeder_names <- app1_SI_1 %>%
   filter(geno_method == "fluidigm") %>%
   select(Field_Number, short_name, group_af_short_name, geno_method, Stage)
 
-fluidigm_breeders_long <- inner_join(fluidigm_breeder_names, genos_long2, by = "Field_Number")
+fluidigm_breeders_long <- inner_join(fluidigm_breeder_names, genos_long2, by = "Field_Number") %>%
+  group_by(Field_Number, CHROMPOS) %>%
+  mutate(geno012 = sum(allele_01)) %>%
+  ungroup()
 
 ```
 
@@ -168,29 +174,35 @@ fluidigm_breeders_long <- inner_join(fluidigm_breeder_names, genos_long2, by = "
 
 ```{r}
 miss_rates <- fluidigm_breeders_long %>%
-  group_by(CHROM) %>%
+  group_by(CHROMPOS) %>%
   summarise(miss_fract = mean(is.na(allele_ACGT)))
 
 ggplot(miss_rates, aes(x = miss_fract)) +
   geom_histogram(binwidth = 0.01) +
-  geom_vline(xintercept = 0.1, linetype = "dashed")
+  geom_vline(xintercept = 0.05, linetype = "dashed")
 ```
-The dashed line there shows a 10% cutoff, which is what we applied to toss out other loci.
+The dashed line there shows a 5% cutoff, which is what we applied to toss out other loci.
 
 Here are the loci that we toss:
 ```{r}
 toss_em <- miss_rates %>%
-  filter(miss_fract > 0.1) %>%
+  filter(miss_fract > 0.05) %>%
   arrange(desc(miss_fract))
-toss_em
+
+# have a look at all of them
+left_join(
+  miss_rates %>% arrange(desc(miss_fract)),
+  assay_meta,
+  by = c("CHROMPOS" = "CHROM")
+)
 ```
 Remove those to make our final data set of Fluidigm-typed breeders and write it out.
 ```{r}
-final_fluidigm_breeders_182_loci_393_birds_long <- fluidigm_breeders_long %>%
-  anti_join(toss_em, by = "CHROM")
+final_fluidigm_breeders_179_loci_393_birds_long <- fluidigm_breeders_long %>%
+  anti_join(toss_em, by = "CHROMPOS")
 write_rds(
-  final_fluidigm_breeders_182_loci_393_birds_long,
-  file = "outputs/003/final_fluidigm_breeders_182_loci_393_birds_long.rds",
+  final_fluidigm_breeders_179_loci_393_birds_long,
+  file = "outputs/003/final_fluidigm_breeders_179_loci_393_birds_long.rds",
   compress = "xz"
 )
 ```
@@ -205,6 +217,12 @@ tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
 dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
 write_rds(tdf, "stored_run_times/003.rds")
 tdf
+```
+
+# Session Info
+
+```{r}
+sessioninfo::session_info()
 ```
 
 

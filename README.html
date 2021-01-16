@@ -1480,6 +1480,15 @@ window.onload = function() {
 };
 </script>
 
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css">
   pre:not([class]) {
@@ -1524,6 +1533,7 @@ h6 {
   text-align: left;
 }
 </style>
+
 
 
 
@@ -1645,21 +1655,21 @@ summary {
 <li><a href="#unix-programs">Unix Programs</a></li>
 <li><a href="#genomic-resources">Genomic resources</a></li>
 <li><a href="#geospatial-data">Geospatial data</a></li>
-<li><a href="#climate-data">Climate Data</a><ul>
-<li><a href="#here-is-erics-attempt-on-it">Here is Eric’s attempt on it:</a></li>
-</ul></li>
+<li><a href="#climate-data">Climate Data</a></li>
 <li><a href="#java-jars">Java jars</a></li>
 <li><a href="#r-packages">R Packages</a></li>
 </ul></li>
 <li><a href="#rmarkdown-documents">RMarkdown Documents</a><ul>
 <li><a href="#rad-seq-data-summaries-and-pca.rmd">001-rad-seq-data-summaries-and-pca.Rmd</a></li>
 <li><a href="#select-snps-for-assays-from-rad.rmd">002-select-snps-for-assays-from-rad.Rmd</a></li>
+<li><a href="#process-5-plates-of-birds-at-192-fluidigm-snps.rmd">003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd</a></li>
+<li><a href="#combine-rad-and-fludigm-breeders-and-run-structure.rmd">004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd</a></li>
 </ul></li>
 <li><a href="#literature-cited">Literature Cited</a></li>
 </ul>
 </div>
 
-<p><strong>Last Updated:</strong> 2020-09-28</p>
+<p><strong>Last Updated:</strong> 2021-01-16</p>
 <div id="overview" class="section level1">
 <h1>Overview</h1>
 <p>This repository includes code, data, and some intermediate results to reproduce the results in Ruegg et al. (“Seasonal niche breadth predicts population declines in a long-distance migratory bird”). You can get the whole thing by cloning or downloading the repo from <a href="https://github.com/eriqande/ruegg-et-al-wifl-genoscape">https://github.com/eriqande/ruegg-et-al-wifl-genoscape</a>.</p>
@@ -1671,7 +1681,7 @@ summary {
 All the RMarkdown documents or scripts can be evaluated en masse by sourcing the R script <code>render-numbered-Rmds-and-scripts.R</code>. On a fairly old mac laptop the run times for each are as follows:
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["File"],"name":[1],"type":["chr"],"align":["left"]},{"label":["Running time in HH:MM:SS"],"name":[2],"type":["chr"],"align":["left"]}],"data":[{"1":"001-rad-seq-data-summaries-and-pca.Rmd","2":"00:00:44"},{"1":"002-select-snps-for-assays-from-rad.Rmd","2":"00:00:34"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["File"],"name":[1],"type":["chr"],"align":["left"]},{"label":["Running time in HH:MM:SS"],"name":[2],"type":["chr"],"align":["left"]}],"data":[{"1":"001-rad-seq-data-summaries-and-pca.Rmd","2":"00:00:44"},{"1":"002-select-snps-for-assays-from-rad.Rmd","2":"00:00:34"},{"1":"003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd","2":"00:00:12"},{"1":"004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd","2":"00:00:07"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 </div>
@@ -1723,10 +1733,7 @@ samtools faidx wifl-genome.fna</code></pre>
 </div>
 <div id="climate-data" class="section level2">
 <h2>Climate Data</h2>
-<p>Make a directory in the top level of the repository called <code>Climate-data</code> with sub-directories <code>Temperature</code> and <code>Precipitation</code>. Download average temperature and precipitation at 2.5 minutes resolution from WorldClim at <a href="https://worldclim.org/data/worldclim21.html">https://worldclim.org/data/worldclim21.html</a>, and put the data into the corresponding sub-directories.</p>
-<div id="here-is-erics-attempt-on-it" class="section level3">
-<h3>Here is Eric’s attempt on it:</h3>
-<p>Make a directory in the top level of the repository called <code>Climate-data</code>. Change into that directory and download the average temperature and precipitation at 2.5 minutes resolution from WorldClim <a href="https://worldclim.org/data/worldclim21.html">https://worldclim.org/data/worldclim21.html</a>. Unzip the downloads within <code>Climate-data</code> leaving you with the directories <code>wc2.1_2.5m_tavg</code> and</p>
+<p>Make a directory in the top level of the repository called <code>Climate-data</code>. Change into that directory and download the average temperature and precipitation at 2.5 minutes resolution from WorldClim <a href="https://worldclim.org/data/worldclim21.html">https://worldclim.org/data/worldclim21.html</a>. Unzip the downloads within <code>Climate-data</code>. Depending on the method used to unzip things, this might leave you with the directories <code>wc2.1_2.5m_tavg</code> and <code>wc2.1_2.5m_prec</code>. Or it might not. The important thing is that you want all the actual tif files to be placed immediately within the <code>Climate-data</code> directory. So, you might have to move all of those files out of <code>wc2.1_2.5m_tavg</code> and <code>wc2.1_2.5m_prec</code>.</p>
 <pre class="sh"><code>mkdir Climate-data
 cd Climate-data
 wget http://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_2.5m_tavg.zip
@@ -1735,8 +1742,20 @@ unzip wc2.1_2.5m_tavg.zip
 unzip wc2.1_2.5m_prec.zip
 rm -f wc2.1_2.5m_tavg.zip
 rm -f wc2.1_2.5m_prec.zip
+mv wc2.1_2.5m_tavg/* wc2.1_2.5m_prec/* ./
+rmdir wc2.1_2.5m_tavg wc2.1_2.5m_prec
 cd ../</code></pre>
-</div>
+<p>Nite, when done with this, the listing of the <code>Climate-data</code> directory looks like:</p>
+<pre class="sh"><code># ls Climate-data/*
+Climate-data/readme.txt*             Climate-data/wc2.1_2.5m_prec_09.tif  Climate-data/wc2.1_2.5m_tavg_06.tif
+Climate-data/wc2.1_2.5m_prec_01.tif  Climate-data/wc2.1_2.5m_prec_10.tif  Climate-data/wc2.1_2.5m_tavg_07.tif
+Climate-data/wc2.1_2.5m_prec_02.tif  Climate-data/wc2.1_2.5m_prec_11.tif  Climate-data/wc2.1_2.5m_tavg_08.tif
+Climate-data/wc2.1_2.5m_prec_03.tif  Climate-data/wc2.1_2.5m_prec_12.tif  Climate-data/wc2.1_2.5m_tavg_09.tif
+Climate-data/wc2.1_2.5m_prec_04.tif  Climate-data/wc2.1_2.5m_tavg_01.tif  Climate-data/wc2.1_2.5m_tavg_10.tif
+Climate-data/wc2.1_2.5m_prec_05.tif  Climate-data/wc2.1_2.5m_tavg_02.tif  Climate-data/wc2.1_2.5m_tavg_11.tif
+Climate-data/wc2.1_2.5m_prec_06.tif  Climate-data/wc2.1_2.5m_tavg_03.tif  Climate-data/wc2.1_2.5m_tavg_12.tif
+Climate-data/wc2.1_2.5m_prec_07.tif  Climate-data/wc2.1_2.5m_tavg_04.tif
+Climate-data/wc2.1_2.5m_prec_08.tif  Climate-data/wc2.1_2.5m_tavg_05.tif</code></pre>
 </div>
 <div id="java-jars" class="section level2">
 <h2>Java jars</h2>
@@ -1812,7 +1831,17 @@ remotes::install_github(&quot;eriqande/whoa&quot;)</code></pre>
 <div id="select-snps-for-assays-from-rad.rmd" class="section level2">
 <h2>002-select-snps-for-assays-from-rad.Rmd</h2>
 <p>(<em>Compiled RMarkdown HTML document on GitHub Pages:</em> <a href="https://eriqande.github.io/ruegg-et-al-wifl-genoscape/002-select-snps-for-assays-from-rad.html">002-select-snps-for-assays-from-rad.html</a>)</p>
-<p>All the steps we went through to rank SNPs for ability to resolve different populations/subspecies, and then the workflow for designing Fluidigm assays from them.</p>
+<p>All the steps we went through to rank the RAD-genotyped SNPs for ability to resolve different populations/subspecies, and then the workflow for designing Fluidigm assays from them.</p>
+</div>
+<div id="process-5-plates-of-birds-at-192-fluidigm-snps.rmd" class="section level2">
+<h2>003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd</h2>
+<p>(<em>Compiled RMarkdown HTML document on GitHub Pages:</em> <a href="https://eriqande.github.io/ruegg-et-al-wifl-genoscape/003-process-5-plates-of-birds-at-192-fluidigm-snps.html">003-process-5-plates-of-birds-at-192-fluidigm-snps.html</a>)</p>
+<p>Workflow for processing 5 plates of breeding birds typed on two plates of Fluidigm assays. Filtering out the SNPs with high missing rate. Naming alleles in various ways for downstream workflows, attaching additional meta data for birds and markers.</p>
+</div>
+<div id="combine-rad-and-fludigm-breeders-and-run-structure.rmd" class="section level2">
+<h2>004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd</h2>
+<p>(<em>Compiled RMarkdown HTML document on GitHub Pages:</em> <a href="https://eriqande.github.io/ruegg-et-al-wifl-genoscape/004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.html">004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.html</a>)</p>
+<p>Take the 012 file of RAD data from <span class="citation">Ruegg et al. (2018)</span> and reconstitute the actual alleles (bases) at those sites so as to make the data commensurate with the newly typed Fluidigm assays from 003. Then combine the Fluidigm and RAD data to run all the breeding birds through STRUCTURE.</p>
 </div>
 </div>
 <div id="literature-cited" class="section level1 unnumbered">
@@ -1833,7 +1862,7 @@ remotes::install_github(&quot;eriqande/whoa&quot;)</code></pre>
 
 // add bootstrap table styles to pandoc tables
 function bootstrapStylePandocTables() {
-  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
 }
 $(document).ready(function () {
   bootstrapStylePandocTables();

@@ -1,0 +1,333 @@
+---
+title: "Combine RAD and Fluidigm Breeder data and do STRUCTURE"
+author: "Eric C. Anderson"
+date: "Last Updated: `r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+  html_notebook:
+    toc: true
+bibliography: references.bib
+---
+
+In this notebook, we combine the breeding-bird Fluidigm data with
+breeding birds that were typed at the same markers using RAD.  We put them
+all together in a common data set and then run it through STRUCTURE.
+
+This requires a few steps because the RAD data are in 012 format, so
+we must add the allelic types back on there.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+start_time <- Sys.time()
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+dir.create("outputs/004", recursive = TRUE, showWarnings = FALSE)
+```
+
+# Get the O12 RAD data and extract just the 179 Fluidigm-typed SNPs we are using
+
+```{r}
+rad_all <- read_rds("data/rad_wifl_clean_175_105000.rds")
+
+fluidigm_long <- read_rds("outputs/003/final_fluidigm_breeders_179_loci_393_birds_long.rds")
+
+target_snps <- unique(fluidigm_long$CHROMPOS)
+
+rad_179 <- rad_all[, target_snps]
+
+# rad_179 is a matrix.  We will make a long tibble out of it
+rad_long <- as_tibble(rad_179) %>%
+  mutate(Field_Number = rownames(rad_179)) %>%
+  select(Field_Number, everything()) %>%
+  pivot_longer(
+    cols = -Field_Number, 
+    names_to = "CHROMPOS", 
+    values_to = "geno012"
+  ) %>%
+  mutate(
+    geno012 = ifelse(geno012 == -1, NA_integer_, geno012)
+  )
+```
+
+# Reconstitute the allelic types from the meta data about the SNPs
+
+Ultimately, we want to get these in the same format as the variable `fluidigm_long`, above.
+
+First, expand the rad data to have alleles of 0 and 1
+```{r}
+rad_01_alleles <- rad_long %>%
+  mutate(
+    `1` = case_when(
+      geno012 == 0 ~ 0L,
+      geno012 == 1 ~ 0L,
+      geno012 == 2 ~ 1L,
+      is.na(geno012) ~ NA_integer_,
+      TRUE ~ -999L
+    ),
+    `2` = case_when(
+      geno012 == 0 ~ 0L,
+      geno012 == 1 ~ 1L,
+      geno012 == 2 ~ 1L,
+      is.na(geno012) ~ NA_integer_,
+      TRUE ~ -999L
+    )
+  ) %>%
+  pivot_longer(
+    cols = c(`1`, `2`),
+    names_to = "gene_copy",
+    values_to = "allele_01"
+  )
+```
+
+Then join that with the SNP metadata in order to get the alternative SNP
+names and to get REF and ALT on it, and then create the allele and allele_ACGT
+columns:
+```{r}
+assay_meta <- read_csv("data/WIFL_fluidigm_assay_info.csv") %>%
+  dplyr::select(SNP_Name, CHROM, REF, ALT) %>%
+  rename(
+    assay_name = SNP_Name,
+    CHROMPOS = CHROM
+  )
+
+rad3 <- left_join(
+  rad_01_alleles, 
+  assay_meta, 
+  by = "CHROMPOS"
+) %>%
+  mutate(
+    allele_ACGT = case_when(
+      allele_01 == 0 ~ REF,
+      allele_01 == 1 ~ ALT, 
+      TRUE ~ NA_character_
+    ),
+    allele = case_when(
+      allele_ACGT == "A" ~ 1,
+      allele_ACGT == "C" ~ 2,
+      allele_ACGT == "G" ~ 3,
+      allele_ACGT == "T" ~ 4,
+      TRUE ~ NA_real_
+    )
+  )
+```
+
+Now, get some meta data for these RAD-typed birds.  And get the columns looking
+like `fluidigm_long` so we can bind_rows() them.
+```{r}
+bird_meta <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv") %>%
+  select(c("Field_Number", "short_name", "group_af_short_name", "geno_method", "Stage"))
+
+rad4 <- left_join(
+  rad3,
+  bird_meta,
+  by = "Field_Number"
+) %>%
+  select(names(fluidigm_long))
+  
+```
+
+Now, bind_rows() the fluidigm and rad data together, and write it out for downstream use.
+```{r}
+rad_and_fluidigm_combined_568_breeders_at_179_snps <- bind_rows(
+  fluidigm_long,
+  rad4
+) %>%
+  mutate(allele = ifelse(allele == 0, NA, allele)) # make sure that missing data in the alleles is reported as NA, consistently
+
+
+
+write_rds(
+  rad_and_fluidigm_combined_568_breeders_at_179_snps, 
+  file = "outputs/004/rad_and_fluidigm_combined_568_breeders_at_179_snps.rds",
+  compress = "xz"
+)
+```
+
+# Confirm that this is the same as appears in Appendix 1 supplement data
+
+This is just a check to make sure that Appendix 1 supplemental data is correct.
+```{r}
+app1_genos <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv") %>%
+  select(Field_Number, starts_with("scaffold"))
+
+# put the rad+fluidigm data into wide format:
+rf_wide <- rad_and_fluidigm_combined_568_breeders_at_179_snps %>%
+  group_by(Field_Number, CHROMPOS) %>%
+  summarise(geno012 = geno012[1]) %>%
+  ungroup() %>%
+  pivot_wider(
+    names_from = CHROMPOS,
+    values_from = geno012
+  )
+
+# get the rad and fluidigm data sorted the same way as the appendix 1 stuff
+rf_bird_ord <- left_join(
+  app1_genos %>% select(Field_Number),
+  rf_wide
+)
+
+# there are some issues here with non-overlapping locus names
+mismatch <- c(
+  setdiff(names(rf_bird_ord), names(app1_genos)),
+  setdiff(names(app1_genos), names(rf_bird_ord))
+)
+
+# let's drop those from both and compare them
+from_app <- app1_genos[, !(names(app1_genos) %in% mismatch) ]
+from_this <- rf_bird_ord[, !(names(rf_bird_ord) %in% mismatch) ]
+from_this <- from_this[, names(from_app)]
+
+all.equal(from_this, from_app)
+
+```
+
+
+
+# Create a STRUCTURE input file
+
+We run structure within the [slg_pipe](https://github.com/eriqande/slg_pipe) framework.
+This only runs on a Mac and takes a considerable amount of time to do all the runs that
+we did, so, here, we will only prepare the data inputs.  Instructions on running the
+pipeline, clumping and distructing are given on the website.  We include output files
+necessary for downstream analyses in the `stored_results` directory.
+
+The basic input format for slg_pipe is a tab delimited file of genotypes with
+short names of individuals and two columns for each locus, both named the same
+(we will name that `slg_input.tsv`);
+a file of populations to use in the order desired (we will name this `pops.txt`);
+and a file of loci in the order desired (we will name this `locs.txt`).
+
+## Making `slg_input.tsv`
+
+```{r}
+slg_pipe1 <- rad_and_fluidigm_combined_568_breeders_at_179_snps %>%
+  select(group_af_short_name, assay_name, gene_copy, allele) %>%
+  mutate(allele = ifelse(is.na(allele), 0, allele)) %>% # denote missing alleles as 0 for slg_pipe
+  pivot_wider(
+    names_from = c(assay_name, gene_copy),
+    values_from = allele,
+    names_sep = "."
+  ) %>%
+  as.data.frame()
+
+# now adjust the names as required for slg_pipe format
+names(slg_pipe1) <- str_replace(names(slg_pipe1), "\\.[12]$", "")
+names(slg_pipe1)[1] <- ""
+
+# write it out
+write.table(
+  slg_pipe1, 
+  file = "outputs/004/slg_input.tsv",
+  quote = FALSE,
+  row.names = FALSE,
+  sep = "\t"
+)
+```
+
+## Getting the populations/sampling locations in the right order
+
+We want the order in which these are in the appendix 1 supplement.  So, we can use that
+```{r}
+pop_ord <- bird_meta$group_af_short_name %>%
+  str_replace_all("[0-9]*$", "") %>%
+  unique()
+pop_ord
+
+cat(pop_ord, file = "outputs/004/pops.txt", sep = "\n")
+```
+
+
+## Get the order that we want to have the loci in for later processing, etc.
+
+We have just saved this in the repo:
+```{r}
+slg_loci <- read_rds(file = "inputs/004/slg-pipe-locus-order.rds")
+
+cat(slg_loci, file = "outputs/004/locs.txt", sep = "\n")
+```
+
+# Running STRUCTURE via slg_pipe
+
+This is not executed by default, but here is the shell code for how you
+would do it on the Mac Unix command line:
+```sh
+####  Get slg_pipe. You might need to install wget...####
+
+# First, get it:
+git clone https://github.com/eriqande/slg_pipe.git
+
+# then get the external binaries that need to go with it
+# For now just download them in a tarball from here:
+wget --output-document=slg_pipe_binaries.tar.gz https://www.dropbox.com/s/xf9gjqdrvosdj8k/slg_pipe_binaries-2016-04-21.tar.gz?dl=1
+
+# extract the tarball
+gunzip slg_pipe_binaries.tar.gz 
+tar -xvf slg_pipe_binaries.tar 
+
+# now copy the binaries into the directory tree of the 
+# repository using rsync
+rsync -avh slg_pipe_binaries/* slg_pipe
+
+#### Change directories into slg_pipe arena and run it ####
+cd slg_pipe/arena/
+
+../script/Do_standard_analyses.sh \
+    ../../outputs/004/slg_input.tsv \
+    ../../outputs/004/pops.txt \
+    ../../outputs/004/locs.txt \
+    WIFL_PIPE \
+    ../../inputs/004/slg-pipe-settings.sh 
+
+# That produces a directory called WIFL_PIPE/StructureArea with everything needed to
+# launch all the structure runs across multiple cores
+
+#### Enter the StructureArea and launch the Runs ####
+
+# Shown here, is what we would do for running it on 18 cores of
+# our big machine
+cd WIFL_PIPE/StructureArea/arena
+
+nohup ../script/ExecuteStructureRuns.sh  18  > BIG_LOG.txt  2>&1 &
+
+
+#### Once the Above is Done...make distruct plots like this... ####
+
+cd ../clump_and_distruct
+
+# create all the distruct plots
+./script/ClumpAndDistructAll.sh 6.5
+
+# compile the plots into single document:
+LaTeXify.sh  ./final_pdf  "2 3 4 5" > plots.tex
+pdflatex plots.tex
+
+```
+
+The end result of all that would be the distruct plots in SI_Figure2.pdf.
+
+
+
+# Running Time
+
+Running the code and rendering this notebook required approximately this much time
+on a Mac laptop of middling speed, listed in `HH:MM:SS`.
+```{r}
+td <- Sys.time() - start_time
+tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
+dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
+write_rds(tdf, "stored_run_times/004.rds")
+tdf
+``` 
+
+# Session Info
+
+```{r}
+sessioninfo::session_info()
+```
+
+# Literature Cited 

@@ -238,8 +238,22 @@ then producing a PCA plot and estimates of pairwise $F_\mathrm{ST}$.
 
 ## `r make_link("002-select-snps-for-assays-from-rad.Rmd")`
 
-All the steps we went through to rank SNPs for ability to resolve different
+All the steps we went through to rank the RAD-genotyped SNPs for ability to resolve different
 populations/subspecies, and then the workflow for designing Fluidigm assays from them.
+
+## `r make_link("003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd")`
+
+Workflow for processing 5 plates of breeding birds typed on two plates
+of Fluidigm assays.  Filtering out the SNPs with high missing rate.  Naming
+alleles in various ways for downstream workflows, attaching additional
+meta data for birds and markers.
+
+## `r make_link("004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd")`
+
+Take the 012 file of RAD data from @ruegg2018ecological and reconstitute the
+actual alleles (bases) at those sites so as to make the data commensurate with
+the newly typed Fluidigm assays from 003.  Then combine the Fluidigm and RAD
+data to run all the breeding birds through STRUCTURE.
 
 # Literature Cited
 

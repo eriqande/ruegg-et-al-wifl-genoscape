@@ -1659,6 +1659,7 @@ summary {
 <li><a href="#getting-the-populationssampling-locations-in-the-right-order">Getting the populations/sampling locations in the right order</a></li>
 <li><a href="#get-the-order-that-we-want-to-have-the-loci-in-for-later-processing-etc.">Get the order that we want to have the loci in for later processing, etc.</a></li>
 </ul></li>
+<li><a href="#running-structure-via-slg_pipe">Running STRUCTURE via slg_pipe</a></li>
 <li><a href="#running-time">Running Time</a></li>
 <li><a href="#session-info">Session Info</a></li>
 <li><a href="#literature-cited">Literature Cited</a></li>
@@ -1853,8 +1854,65 @@ pop_ord</code></pre>
 <div id="get-the-order-that-we-want-to-have-the-loci-in-for-later-processing-etc." class="section level2">
 <h2>Get the order that we want to have the loci in for later processing, etc.</h2>
 <p>We have just saved this in the repo:</p>
-<pre class="r"><code>slg_loci &lt;- read_rds(file = &quot;inputs/004/slg-pipe-locus-order.rds&quot;)</code></pre>
+<pre class="r"><code>slg_loci &lt;- read_rds(file = &quot;inputs/004/slg-pipe-locus-order.rds&quot;)
+
+cat(slg_loci, file = &quot;outputs/004/locs.txt&quot;, sep = &quot;\n&quot;)</code></pre>
 </div>
+</div>
+<div id="running-structure-via-slg_pipe" class="section level1">
+<h1>Running STRUCTURE via slg_pipe</h1>
+<p>This is not executed by default, but here is the shell code for how you would do it on the Mac Unix command line:</p>
+<pre class="sh"><code>####  Get slg_pipe. You might need to install wget...####
+
+# First, get it:
+git clone https://github.com/eriqande/slg_pipe.git
+
+# then get the external binaries that need to go with it
+# For now just download them in a tarball from here:
+wget --output-document=slg_pipe_binaries.tar.gz https://www.dropbox.com/s/xf9gjqdrvosdj8k/slg_pipe_binaries-2016-04-21.tar.gz?dl=1
+
+# extract the tarball
+gunzip slg_pipe_binaries.tar.gz 
+tar -xvf slg_pipe_binaries.tar 
+
+# now copy the binaries into the directory tree of the 
+# repository using rsync
+rsync -avh slg_pipe_binaries/* slg_pipe
+
+#### Change directories into slg_pipe arena and run it ####
+cd slg_pipe/arena/
+
+../script/Do_standard_analyses.sh \
+    ../../outputs/004/slg_input.tsv \
+    ../../outputs/004/pops.txt \
+    ../../outputs/004/locs.txt \
+    WIFL_PIPE \
+    ../../inputs/004/slg-pipe-settings.sh 
+
+# That produces a directory called WIFL_PIPE/StructureArea with everything needed to
+# launch all the structure runs across multiple cores
+
+#### Enter the StructureArea and launch the Runs ####
+
+# Shown here, is what we would do for running it on 18 cores of
+# our big machine
+cd WIFL_PIPE/StructureArea/arena
+
+nohup ../script/ExecuteStructureRuns.sh  18  &gt; BIG_LOG.txt  2&gt;&amp;1 &amp;
+
+
+#### Once the Above is Done...make distruct plots like this... ####
+
+cd ../clump_and_distruct
+
+# create all the distruct plots
+./script/ClumpAndDistructAll.sh 6.5
+
+# compile the plots into single document:
+LaTeXify.sh  ./final_pdf  &quot;2 3 4 5&quot; &gt; plots.tex
+pdflatex plots.tex
+</code></pre>
+<p>The end result of all that would be the distruct plots in SI_Figure2.pdf.</p>
 </div>
 <div id="running-time" class="section level1">
 <h1>Running Time</h1>
