@@ -417,7 +417,7 @@ write_csv(candidate_snps, file = "outputs/002/candidate_snps_untossed.csv")
 Subsequently we got our eyes on that output and then hand-selected
 which ones to toss by putting a "TRUE" in the "toss_it" 
 column and saving the result in exactly the same format in a file saved in
-our repository in `stored_results/candidate_snps_tossed.csv`.
+our repository in `stored_results/002/candidate_snps_tossed.csv`.
 
 
 
@@ -425,7 +425,7 @@ our repository in `stored_results/candidate_snps_tossed.csv`.
 
 Our list of 210 final candidates is here:
 ```{r get-final-candi, message=FALSE}
-final_candidates <- read_csv("stored_results/candidate_snps_tossed.csv") %>%
+final_candidates <- read_csv("stored_results/002/candidate_snps_tossed.csv") %>%
   filter(toss_it == FALSE)
 ```
 
@@ -491,7 +491,7 @@ Outputting VCF file...
 # then that was tabix indexed.
 ```
 
-`design-variants.recode.vcf` is placed in `stored_results` in the repository.
+`design-variants.recode.vcf` is placed in `stored_results/002` in the repository.
 
 ## Retrieving variants that overlap our candidate regions
 
@@ -502,7 +502,7 @@ shell programming here:
 ```{sh}
 while read line; do 
   array=($line); 
-  tabix stored_results/design-variants.recode.vcf.gz  "${array[1]}" | \
+  tabix stored_results/002/design-variants.recode.vcf.gz  "${array[1]}" | \
   awk -v snp="${array[0]}" '
     {printf("%s\t%s\n", snp, $0);}
   ';
