@@ -1,0 +1,216 @@
+---
+title: "Choosing 96 SNPs from amongst the 179 SNPs"
+author: "Eric C. Anderson"
+date: "Last Updated: `r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+  html_notebook:
+    toc: true
+bibliography: references.bib
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+start_time <- Sys.time()
+```
+
+
+## Introduction
+
+In the notebook `003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd`,
+we processed the chips into two column format,
+tossed out some hard-to-score loci, ending up with 179 SNPs. In
+`004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd` we retrieved the
+genotypes of the 175 RAD-genotyped individuals and combined them with the 393 Fluidigm-typed
+individuals and ran all of these 568 breeding birds through _structure_ 
+with the 179 SNPs.
+
+From those results, it looked like there was very little variation in the _structure_ output
+across multiple runs for the model with $K=5$, and the clusters found there reflected
+geography, consistently.  
+
+Now it is time to whittle those 179 loci down to a panel of 96 that we will be using
+to genotype the wintering birds.
+The way we will do this is by using the SNP allele frequencies estimated in the 
+$K=5$ run (we use the first $K=5$ run, but they all came out the same, so it should 
+make no difference) to guide us.  I have committed with the repository the output file
+from that run that includes the allele frequencies at the different loci.  That file is
+at `./stored_results/004/StructOuput_genos_slg_pipe.txt_dat001_k005_Rep001.txt_f`.
+
+We rank each locus in terms of its utility for accurately assigning individuals from
+each of the 5 different clusters using the expected value of the posterior probability 
+that an individual came from its own cluster.   Let $p_1,\ldots,p_5$ denote the 
+_structure_-estimated frequencies
+of the "0" allele at a SNP in the 5 clusters, respectively.  Then, under HW-equilibrium
+it is easy to compute the expected frequencies of the three different genotypes
+\[
+\begin{aligned}
+P_{00,i} &= p_i^2 \\
+P_{01,i} &= 2p_i(1-p_i) \\
+P_{11,i} &= (1-p_i)^2 \\
+\end{aligned}
+\]
+for $i \in \{1,\ldots,5\}$.
+
+If we assumed that an individual with genotype 00 was _a-priori_ equally likely to be from 
+any of the 5 clusters, then we could define the posterior probability that an 00 genotype
+(at a single locus) came from cluster $j$ as $Q_{00,j} = P_{00,j}/\sum_{i=1}^5 P_{00,i}$.
+The same goes for the heterozygote genotype (01) and the other homozygote (11). So we have:
+\[
+\begin{aligned}
+Q_{00,j} &= \frac{P_{00,j}}{\sum_{i=1}^5 P_{00,i}} \\
+Q_{01,j} &= \frac{P_{01,j}}{\sum_{i=1}^5 P_{01,i}} \\
+Q_{11,j} &= \frac{P_{11,j}}{\sum_{i=1}^5 P_{11,i}}\\
+\end{aligned}
+\]
+for $j \in \{1,\ldots,5\}$.
+
+Thus, for an individual that is actually from cluster $j$ the expected posterior probability
+that it is from cluster $j$ based on data from this one locus is:
+\[
+E_j = P_{00,j}Q_{00,j} + P_{01,j}Q_{01,j} + P_{11,j}Q_{11,j}.
+\]
+In the sequel, we use $E_j^{(\ell)}$ to refer to the $E_j$ value for locus $\ell$.  
+
+So, our approach for selecting loci here is going to be:
+
+1. compute $E^{(\ell)}_j$ for each cluster $j$ and each locus $\ell$
+1. for each cluster $j$, rank the loci in descending order of $E^{(\ell)}_j$
+1. then cycle over the 5 clusters, and, each time, include in the "retained loci" list
+the highest-ranked locus for that cluster that has not yet been put on the "retained list".
+Do this until there are 96 SNPs on the "retained list."
+
+
+## Functions 
+
+In order to do this easily, we write a function that takes a vector of allele frequencies
+from biallelic loci in $K$ different clusters/populations, and returns a vector of $E_j$ values.
+
+This function is called `Ej_from_freqs` in `./R/wifl-popgen-funcs.R`. So, we need to source that 
+in here:
+```{r get-func}
+library(tidyverse)
+source("R/Ej_from_freqs.R")
+dir.create("outputs/005", showWarnings = FALSE, recursive = TRUE)
+```
+
+
+## Doing the selection
+
+### Reading in the allele frequencies
+
+We need to parse the _structure_ output file.  This  can be done with R, but it is way easier with
+`awk`.  
+
+First We put them into an easily readable form in a temp file called `xxx_tmp_freqs.txt`.
+```{sh awk-out-the-freqs}
+rm -f xxx_tmp_freqs.txt
+awk '
+  /^Estimated Allele Frequencies in each cluster/ {go = 1}
+  /^Locus/ && go==1 {locus = $4; n = 0; next}
+  go==1 {++n}
+  n==3 && go==1 {printf("%s", locus); for(i=3;i<=NF;i++) printf("\t%s", $i); printf("\n")}
+  ' stored_results/004/StructOuput_genos_slg_pipe.txt_dat001_k005_Rep001.txt_f > outputs/005/tmp_struct_freqs.txt
+  
+```
+
+
+Then we read those into a data frame and put some names on the columns
+```{r}
+sfreqs <- read_delim("outputs/005/tmp_struct_freqs.txt", delim = "\t", col_names = FALSE)
+names(sfreqs) <- c("struct_name", paste("clust_", 1:5, sep = ""))
+```
+
+### Getting the full locus names
+
+There is one silly wrinkle here: _structure_ truncates the locus names.  Jeez!! Fortunately, we 
+have them in the slg_pipe output.  The respository has a copy of them in a text file at
+`inputs/004/slg-pipe-locus-order.rds`.  We read that in and then fill out the locus names.
+
+Anyhow, it is just a quick slap of the locus names on there.
+```{r get-full-loc-names}
+fullloc <- read_rds(file = "inputs/004/slg-pipe-locus-order.rds")
+sfreqs2 <- sfreqs %>%
+  mutate(locus = fullloc) %>%
+  select(locus, clust_1:clust_5)
+
+# here is what that looks like:
+sfreqs2
+```
+
+
+### Choosing the top 96 loci
+
+This is a matter of sorting by rank and cluster and then taking unduplicated ones until we have 96
+```{r play}
+stidy <- sfreqs2 %>%
+  tidyr::gather(data = ., key = "cluster", value = "freq", clust_1:clust_5)
+
+picks <- stidy %>%
+  group_by(locus) %>%
+  mutate(Ej = Ej_from_freqs(freq)) %>%
+  group_by(cluster) %>%
+  mutate(rank = rank(desc(Ej))) %>%
+  ungroup() %>%
+  arrange(rank) %>%
+  mutate(first_occurrence = !duplicated(locus),
+         cml = cumsum(first_occurrence),
+         include = (first_occurrence == TRUE) & (cml <= 96))
+```
+
+If we want to have a look at the freqs we can page through this:
+```{r look-at-freqs}
+left_join(picks, sfreqs2) %>% 
+  select(-first_occurrence, -freq)
+```
+
+Let us write out the top 96 loci:
+```{r write-top-96}
+top96 <- picks %>%
+  filter(include == TRUE)
+
+# and write them to the intermediates directory
+write_csv(top96, file = "outputs/005/top96_loci.csv")
+```
+
+## Looking at our choices
+
+Just going to make a quick histogram of the $E_j$ values that got specifically chosen for the different clusters.
+```{r plot-hists, fig.width = 12}
+ggplot(picks, aes(x = Ej, fill = include)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~ cluster, ncol = 3)
+```
+
+But, of course, if we want to see all the included loci we have to do something a little different
+```{r another-hist, fig.width=12}
+tmp <- picks %>%
+  mutate(in_panel = locus %in% top96$locus)
+
+ggplot(tmp, aes(x = Ej, fill = in_panel)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~ cluster, ncol = 3)
+```
+
+# Running Time
+
+Running the code and rendering this notebook required approximately this much time
+on a Mac laptop of middling speed, listed in `HH:MM:SS`.
+```{r}
+td <- Sys.time() - start_time
+tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
+dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
+write_rds(tdf, "stored_run_times/005.rds")
+tdf
+``` 
+
+# Session Info
+
+```{r}
+sessioninfo::session_info()
+```
+
