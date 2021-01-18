@@ -286,8 +286,7 @@ For this we use the function `genoscapeRtools::qprob_rando_raster()`.  This take
 brick that comes out of tess3Q_map_rasters() and does some rescaling and (maybe) some random sampling
 to return a raster of colors that I hope will do a reliable job of representing (in some way) predicted
 assignment accuracy over space.
-See `?genoscapeRtools::qprob_rando_raster` to learn about the scaling options, etc. (However, I am
-not convinced that all of those options are reliably estimated.)
+See `?genoscapeRtools::qprob_rando_raster` to learn about the scaling options, etc. 
 
 This will squash the raster brick down to a single
 RGBA (i.e., four channels, red, green, blue and alpha) raster brick.
@@ -317,18 +316,73 @@ ggplot() +
   coord_sf()
 ```
 
-Note that if we wanted to add the actual sampling points to this (that are given
-in `long_lat_tibble`), we can use ggspatial's `geom_spatial_point()` function.
+
+# Sample Location Membership
+
+From this plot it is clear which sampling location belong to which regions/clusters/colors
+of the genoscape.  Breeding birds were placed into such colors/clusters according to their
+spatial location (and not by their individual Structure Q-values, etc.)  We do that
+here:
+```{r}
+source("R/assign_points_to_raster_regions.R")
+
+# let's get the ids and the lat-longs of all these birds
+# again, so we can check what we have in the appendix
+LLG_tibble <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv") %>%
+  select(group_af_short_name, Lat, Long, repunit, Stage) %>%
+  rename(
+    id = group_af_short_name
+  )
+
+# now, we find which section of the genoscape each point is in
+LLG_with_spatial <- assign_points_to_raster_regions(
+  genoscape_brick,
+  LLG_tibble
+)
+```
+
+The results here have been recorded in the data supplement: `app1-SITable1_Breed_IndvAssigwgenos.csv` in the `repunit` column.
+
+We show here that the `repunit` column and the `spatial_group`
+(just computed) are
+same for all birds except for the samples from Bishop, CA:
+```{r}
+LLG_with_spatial %>%
+  filter(repunit != spatial_group)
+```
+This one sampling location was indeterminate in the genoscape, lying
+at the intersection of four different clusters/colors.  Further, the sample
+was populated with individuals that showed genetic affiliation to a number
+of different groups, suggesting that some may have been migrants.  Furthermore,
+the population in Bishop is very small and thus would not be expected
+to contribute birds to the wintering samples.  Therefore, in
+`app1-SITable1_Breed_IndvAssigwgenos.csv`, their repunit is designated
+as `BIS`, but they will be removed from the reference data set for
+identification of wintering birds.
+
+The following plot shows the location of the Bishop samples highlighted
+by a large, black circle.  Note that it does not show clear affiliation
+with any of the other regions, unlike the other sampling points.
 ```{r}
 ggplot() +
   layer_spatial(genoscape_rgba) +
-  geom_spatial_point(data = long_lat_tibble, mapping = aes(x = Long, y = Lat), size = 0.2) +
+  geom_spatial_point(
+    data = long_lat_tibble, 
+    mapping = aes(x = Long, y = Lat), size = 0.2
+  ) +
+  annotate(
+    "point", 
+    x = -118.4800,
+    y = 37.4083,
+    size = 9,
+    shape = 21,
+    fill = NA
+  ) +
   theme_bw() +
   coord_sf()
 ```
 
-It would probably be better to jigger those points a little bit.  That could be done by mutating
-each of them a random bit away.
+
 
 # Other map elements
 
