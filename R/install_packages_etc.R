@@ -6,11 +6,13 @@ install.packages(
     "ade4",
     "car",
     "dggridR",
+    "downloader",
     "ebirdst",
     "ecospat",
     "emdist",
     "fields",
     "geosphere",
+    "ggspatial",
     "gridExtra",
     "hms",
     "igraph",
@@ -50,3 +52,4 @@ BiocManager::install("SNPRelate")
 remotes::install_github("eriqande/genoscapeRtools")
 remotes::install_github("eriqande/snps2assays")
 remotes::install_github("eriqande/whoa")
+remotes::install_github("eriqande/TESS3_encho_sen")  # for special version of tess3r

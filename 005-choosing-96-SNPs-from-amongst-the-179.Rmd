@@ -19,7 +19,7 @@ start_time <- Sys.time()
 ```
 
 
-## Introduction
+# Introduction
 
 In the notebook `003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd`,
 we processed the chips into two column format,
@@ -85,7 +85,7 @@ the highest-ranked locus for that cluster that has not yet been put on the "reta
 Do this until there are 96 SNPs on the "retained list."
 
 
-## Functions 
+# Functions 
 
 In order to do this easily, we write a function that takes a vector of allele frequencies
 from biallelic loci in $K$ different clusters/populations, and returns a vector of $E_j$ values.
@@ -99,9 +99,9 @@ dir.create("outputs/005", showWarnings = FALSE, recursive = TRUE)
 ```
 
 
-## Doing the selection
+# Doing the selection
 
-### Reading in the allele frequencies
+## Reading in the allele frequencies
 
 We need to parse the _structure_ output file.  This  can be done with R, but it is way easier with
 `awk`.  
@@ -125,7 +125,7 @@ sfreqs <- read_delim("outputs/005/tmp_struct_freqs.txt", delim = "\t", col_names
 names(sfreqs) <- c("struct_name", paste("clust_", 1:5, sep = ""))
 ```
 
-### Getting the full locus names
+## Getting the full locus names
 
 There is one silly wrinkle here: _structure_ truncates the locus names.  Jeez!! Fortunately, we 
 have them in the slg_pipe output.  The respository has a copy of them in a text file at
@@ -143,7 +143,7 @@ sfreqs2
 ```
 
 
-### Choosing the top 96 loci
+## Choosing the top 96 loci
 
 This is a matter of sorting by rank and cluster and then taking unduplicated ones until we have 96
 ```{r play}
@@ -177,7 +177,7 @@ top96 <- picks %>%
 write_csv(top96, file = "outputs/005/top96_loci.csv")
 ```
 
-## Looking at our choices
+# Looking at our choices
 
 Just going to make a quick histogram of the $E_j$ values that got specifically chosen for the different clusters.
 ```{r plot-hists, fig.width = 12}

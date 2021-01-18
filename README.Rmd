@@ -146,9 +146,53 @@ Make a directory in the top level of the repository called
 `geo-spatial` and then download some large files from Natural Earth Data
 to there:
 
-- Natural Earth II with Shaded Relief, Water, and Drainages raster [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip).  Put or symlink the resulting directory, `NE2_HR_LC_SR_W_DR` into `geo-spatial`.
-- 10m-cultural-vectors, Admin 1 – States, Provinces, Download boundary lines: [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip). Put or symlink the resulting directory, `ne_10m_admin_1_states_provinces_lines` into `geo-spatial`.
+- We the hypsometrically tinted Natural Earth map with
+water bodies and rivers on it, and you might as well get the one that has some ocean
+basin coloring too. Natural Earth II with Shaded Relief, Water, and Drainages raster [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/HYP_HR_SR_OB_DR.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/HYP_HR_SR_OB_DR.zip).  Put or symlink the resulting directory, `HYP_HR_SR_OB_DR` into `geo-spatial`.
+- 10m-cultural-vectors, Admin 1 – States, Provinces, Download boundary lines: [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip). Put the resulting directory, `ne_10m_admin_1_states_provinces_lines` into `geo-spatial`.
 - Finally, get the coastlines: [https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip](https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip), and put the resulting folder, `ne_10m_coastline` into `geo-spatial`.
+
+Here is some R-code that would make that all happen:
+```{r, eval=FALSE}
+dir.create("geo-spatial", showWarnings = FALSE)
+
+# Natural Earth Data rasters
+tmpfile <- tempfile()
+downloader::download(
+  url = "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/HYP_HR_SR_OB_DR.zip",
+  dest = tmpfile
+)
+unzip(zipfile = tmpfile, exdir = "geo-spatial/HYP_HR_SR_OB_DR")
+
+
+# coastlines
+tmpfile <- tempfile()
+downloader::download(
+  url = "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip",
+  dest = tmpfile
+)
+unzip(zipfile = tmpfile, exdir = "geo-spatial/ne_10m_coastline")
+
+
+# country boundaries
+tmpfile <- tempfile()
+downloader::download(
+  url = "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_0_boundary_lines_land.zip",
+  dest = tmpfile
+)
+unzip(zipfile = tmpfile, exdir = "geo-spatial/ne_10m_admin_0_boundary_lines_land")
+
+
+# state and province boundaries
+# country boundaries
+tmpfile <- tempfile()
+downloader::download(
+  url = "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip",
+  dest = tmpfile
+)
+unzip(zipfile = tmpfile, exdir = "geo-spatial/ne_10m_admin_1_states_provinces_lines")
+```
+
 
 
 ## Climate Data

@@ -1,0 +1,563 @@
+---
+title: "Make the Genoscape"
+author: "Eric C. Anderson"
+date: "Last Updated: `r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+  html_notebook:
+    toc: true
+bibliography: references.bib
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+start_time <- Sys.time()
+```
+
+# Introduction
+
+The genoscape can be thought of as the bright colors smeared across space that show where different
+genetically identifiable groups of birds reside on the breeding grounds.  These genoscapes
+are stored as rasters, and transparency is used to indicate how much confidence one has
+in the genetic identification of individuals in different areas.  These rasters are made
+by interpolating Q-values from a program like STRUCTURE or ADMIXTURE between individuals
+that were sampled in space.
+
+The steps to making a genoscape from a matrix of Q-values (i.e., like those
+estimated from _structure_) followed here are those that appear on GitHub Pages,
+[here](https://eriqande.github.io/make-a-BGP-map/Make-a-BGP-map-Notebook.nb.html).
+We reiterate that treatment here, having updated all the links and dependencies
+to work in this repository.
+
+This chronicles the steps taken whilst making a genoscape for willow flycatchers.
+The order in which we discuss building up this map is different from the order in which
+we put layers down to actually make the map. Here, we will start with making the
+genoscape, which is actually the part that sits atop the whole map.
+We do this, because it doesn't take too long
+to plot these features, and using them is a good way to figure out the desired extent of
+your map and to decide upon a projection.  Finally, we will talk about the bottom
+layer of the map, which is the raster with earthforms and shading from Natural Earth Data.
+
+## Packages Needed
+
+### Non-standard Packages
+
+This work draws on a few functions that I have in packages that I have up on GitHub,
+namely:
+
+1. **my fork** of `tess3r`.  Note that you can't use the default version of `tess3r`,
+you have to use my fork of it, which has some extra functionality.
+2. my package `genoscapeRtools`
+
+You should have already installed those packages as part of the `ruegg-et-al-wifl-genoscape`
+depencies.  But, if you have not:
+```{r, eval=FALSE}
+remotes::install_github("eriqande/TESS3_encho_sen")  # for special version of tess3r
+remotes::install_github("eriqande/genoscapeRtools")  # for Eric's genoscapeRtools
+```
+
+### Standard Packages
+
+The rest of the packages you need can be downloaded from CRAN.  Again,
+you should have already gotten them as dependencies for the repo, but
+if not, get `raster`, `sf`, `fields`, `ggspatial`, `downloader`, and `tidyverse`. 
+The last one there gets ggplot2
+and a number of other packages by Hadley Wickham.
+
+You can get those like this:
+```{r, eval=FALSE}
+install.packages(c("raster", "sf", "tidyverse", "fields", "ggspatial", "downloader"))
+```
+
+### Load the Packages We will work with
+
+```{r, comment=FALSE, warning=FALSE, message=FALSE}
+library(raster)  # important to load before tidyverse, otherwise it masks select()
+library(tidyverse)
+library(sf)
+library(ggspatial)
+```
+
+
+# Input Data
+
+## Breeding bird Q values (and colors)
+
+In `004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd` we set up the _structure_
+runs to get the $Q$-values.  Of all the runs done there and depicted in Supporting Information
+Figure 2, the run that had converged (without any prior information about sampling location)
+to the best representation of the spatial arrangement of the samples was $K=7$, replicate
+run #4. That run was chosen to make the genoscape.  The Q-values from that run are
+stored in this repository in `./stored_results/004/Struct-q-values-k007_Rep004.txt`.
+
+We read them in and work with them.
+```{r}
+Q_tibble <- read_table2("stored_results/004/Struct-q-values-k007_Rep004.txt", col_names = FALSE)
+names(Q_tibble) <- c(
+  "id",
+  "INW",
+  "EST",
+  "PNW",
+  "SSW",
+  "SCC",
+  "KER",
+  "WMT"
+)
+```
+
+Here is a quick look at the top of that Q_tibble:
+```{r}
+head(Q_tibble)
+```
+
+Column `id` is the sample name and the rest are ancestry fractions to different clusters
+(named with three characters) estimated by STRUCTURE.
+
+Get the colors as well:
+
+```{r}
+# we also have colors for those stored in the repo:
+source("R/colors.R")
+
+# that has defined this:
+cluster_colors
+```
+
+First, let us just make a distruct-like plot to remind us of this. We can use
+ggplot2 to do that:
+```{r}
+# first, we want to get the region from the names of the samples, so we can
+# print these atop the plot
+region_names_and_positions <- Q_tibble %>%
+  mutate(
+    idx = 1:n(),
+    region = str_replace(id, "[rf][0-9]+$", "")
+  ) %>%
+  group_by(region) %>%
+  summarise(
+    first = min(idx),
+    last = max(idx),
+    mid = (min(idx) + max(idx)) / 2
+  ) %>%
+  arrange(first)
+
+# then we have to pivot the data frame into longer format:
+qlong <- Q_tibble %>%
+  mutate(idx = 1:n()) %>%
+  pivot_longer(
+    cols = -c(id, idx),
+    names_to = "cluster",
+    values_to = "q"
+  )
+
+# then plot that dude 
+g <- ggplot() +
+  geom_col(
+    data = qlong,
+    mapping = aes(x = idx, y = q, fill = cluster),
+    colour = NA
+  ) +
+  scale_fill_manual(values = cluster_colors) +
+  geom_segment(
+    data = region_names_and_positions,
+    mapping = aes(
+      x = first,
+      xend = first,
+      y = 0,
+      yend = 1
+    ),
+    size = 0.5
+  ) +
+  geom_text(
+    data = region_names_and_positions,
+    mapping = aes(
+      x = mid,
+      y = 1.05,
+      label = region
+    ),
+    angle = 70
+  )
+
+g
+
+```
+
+
+
+
+
+## Breeding Bird Lat-Longs
+
+We also need to know where those individuals were sampled in space. We have that here:
+```{r, message=FALSE}
+LatLong_tibble <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv") %>%
+  select(group_af_short_name, Lat, Long) %>%
+  rename(
+    id = group_af_short_name
+  )
+head(LatLong_tibble)
+```
+
+
+## Breeding Bird Shapefile
+
+Finally, we need to have a GIS Shapefile that tells us the range of the breeding
+birds, so that genoscape can be clipped properly.  We read this shapefile with the
+`st_read()` function from package `sf`.
+```{r, results='hide'}
+breeding_range <- st_read("data/WIFL_RangeMap/WIFLrev.shp")
+```
+
+We can plot those polygons to see what they look like:
+```{r}
+ggplot(breeding_range) +
+  geom_sf() +
+  theme_bw()
+```
+
+
+# Make the genoscape by kriging and scaling
+
+Within Eric's fork of `tess3r` is a function called `tess3Q_map_rasters`.  It
+takes input from the objects we have above, but it takes that input as
+matrices rather than data frames, etc. so there is a little finagling to be done.
+
+## First, make sure the lat longs are in the correct order and arrangement
+
+We need to ensure that we have values for birds in the right order (a job for a` left_join`), and we
+also have to make it a matrix with Longitude in the first column and Lat in the
+second.
+```{r}
+long_lat_tibble <- Q_tibble %>%
+  select(id) %>%
+  left_join(LatLong_tibble, by = "id") %>%
+  select(Long, Lat)
+
+long_lat_matrix <- long_lat_tibble %>%
+  as.matrix()
+```
+
+## Then, make a matrix of the Q values
+
+Pull off the names of individuals and make a matrix of it:
+```{r}
+Q_matrix <- Q_tibble %>%
+  select(-id) %>%
+  as.matrix()
+```
+
+## Interpolate the Q-values by Kriging
+
+For this, we use the above variables in `tess3r::tess3Q_map_rasters()`.  Note the
+use of namespace addressing for this function rather than loading the whole `tess3r` package
+with the `library()` command.
+```{r}
+genoscape_brick <- tess3r::tess3Q_map_rasters(
+  x = Q_matrix,
+  coord = long_lat_matrix,
+  map.polygon = breeding_range,
+  window = extent(breeding_range)[1:4],
+  resolution = c(300,300), # if you want more cells in your raster, set higher
+  # this next lines need to to be here, but don't do much...
+  col.palette = tess3r::CreatePalette(cluster_colors, length(cluster_colors)),
+  method = "map.max",
+  interpol = tess3r::FieldsKrigModel(10),
+  main = "Ancestry coefficients",
+  xlab = "Longitude",
+  ylab = "Latitude",
+  cex = .4
+)
+
+# after that, we need to add names of the clusters back onto this raster brick
+names(genoscape_brick) <- names(Q_tibble)[-1]
+```
+
+That gives us a raster brick of Q-values associated with each cell in the raster, but
+those values are not always constrained between 0 and 1, so we have to massage them
+a little bit in the next section.
+
+## Scaling and cleaning the genoscape_brick
+
+For this we use the function `genoscapeRtools::qprob_rando_raster()`.  This takes the raster
+brick that comes out of tess3Q_map_rasters() and does some rescaling and (maybe) some random sampling
+to return a raster of colors that I hope will do a reliable job of representing (in some way) predicted
+assignment accuracy over space.
+See `?genoscapeRtools::qprob_rando_raster` to learn about the scaling options, etc. (However, I am
+not convinced that all of those options are reliably estimated.)
+
+This will squash the raster brick down to a single
+RGBA (i.e., four channels, red, green, blue and alpha) raster brick.
+```{r}
+genoscape_rgba <- genoscapeRtools::qprob_rando_raster(
+  TRB = genoscape_brick,
+  cols = cluster_colors,
+  alpha_scale = 2.0,
+  abs_thresh = 0.0,
+  alpha_exp = 1.55,
+  alpha_chop_max = 230
+)
+
+# at this point, we must be explicit about adding a projection to the raster.
+# This adds the info for a regular lat-long projection
+crs(genoscape_rgba) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+
+
+```
+
+We can easily plot this with the function `layer_spatial` from the `ggspatial` package:
+```{r}
+ggplot() +
+  ggspatial::layer_spatial(genoscape_rgba) +
+  theme_bw() +
+  coord_sf()
+```
+
+Note that if we wanted to add the actual sampling points to this (that are given
+in `long_lat_tibble`), we can use ggspatial's `geom_spatial_point()` function.
+```{r}
+ggplot() +
+  layer_spatial(genoscape_rgba) +
+  geom_spatial_point(data = long_lat_tibble, mapping = aes(x = Long, y = Lat), size = 0.2) +
+  theme_bw() +
+  coord_sf()
+```
+
+It would probably be better to jigger those points a little bit.  That could be done by mutating
+each of them a random bit away.
+
+# Other map elements
+
+
+Since we will be using the Natural Earth Data Set for the raster background of our map,
+we will also use the Natural Earth lines and polygons.  The Natural Earth data set is
+an amazing, open-source resource for making beautiful maps.  Check it out at
+[naturalearthdata.com](https://www.naturalearthdata.com/).
+
+## Downloading the shapefiles for Coastlines, Countries, States, and Provinces
+
+For coastlines, countries, and states/provinces, you will need to download
+three different shape files.  We will be working with the highest resolution
+Natural Earth data sets which are the `10m` versions. 
+According to the dependencies, (see the README), you should have already downloaded
+these and unzipped them
+to a directory within the top level of the RStudio project called `geo-spatial`.
+
+## Plot the Coastlines and estimate where we want to clip
+
+First read it in:
+```{r}
+coastlines <- st_read("geo-spatial/ne_10m_coastline/ne_10m_coastline.shp")
+```
+Now, let's just crop out the part that we want.  This is somewhat key:
+right here we will define the extent in lat-long of the region that
+we want to plot:
+```{r}
+# note! it is important to put the elements of domain in this
+# order, because the function raster::extent() is expecting things
+# to be in this order, and doesn't parse the names of the vectors
+# the way sf::st_crop() does.
+domain <- c(
+  xmin = -135,
+  xmax = -60,
+  ymin = 22,
+  ymax = 60
+)
+
+coast_cropped <- st_crop(coastlines, domain)
+
+```
+
+Then plot the cropped part:
+```{r}
+ggplot(coast_cropped) +
+  geom_sf() +
+  coord_sf()
+```
+
+## All the lines, plus the genoscape
+
+OK, that was pretty reasonable.  Now crop all the lines to `domain` and plot
+them, and put the genoscape on top of that, too.
+```{r}
+countries_cropped <-  st_read("geo-spatial/ne_10m_admin_0_boundary_lines_land/ne_10m_admin_0_boundary_lines_land.shp") %>%
+  st_crop(domain)
+states_cropped <- st_read("geo-spatial/ne_10m_admin_1_states_provinces_lines/ne_10m_admin_1_states_provinces_lines.shp") %>%
+  st_crop(domain)
+```
+
+Now, plot it all.  Notice we do it by just adding layers.
+```{r}
+mapg <- ggplot() +
+  geom_sf(data = coast_cropped) +
+  geom_sf(data = countries_cropped, fill = NA) +
+  geom_sf(data = states_cropped, fill = NA) +
+  ggspatial::layer_spatial(genoscape_rgba) +
+  theme_bw()
+
+# now plot it under default lat-long projection
+mapg +
+  coord_sf()
+```
+
+That is looking like it should, but the projection is pretty ugly.  In the next section
+we will consider projection.
+
+## Projecting
+
+The new version of `ggplot2` makes it super easy to project everything on the fly
+by passing the projection to `coord_sf()`.   For things in North America,
+it seems that a Lambert conic projection does a nice job of keeping British Columbia
+and Alaska from looking way too big. We can define such a projection with a string, like
+this:
+```{r}
+lamproj <- "+proj=lcc +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-100 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+```
+
+Now, let's see how our developing map looks under such a projection.  We just define `lamproj` as
+a coordinate reference system and pass it in to `coord_sf()`:
+```{r}
+mapg +
+  coord_sf(crs = st_crs(lamproj))
+```
+
+I would call that decidedly better.
+
+## The pretty-map background
+
+Now, all that remains is to put all of this on top of a nicely tinted map that
+shows landforms and things.  Note that once we have such a layer under the rest of this
+stuff, we will probably omit the coastline layer, since it gets a little dark where the
+coastline is highly dissected.
+
+### Read in the raster and crop it
+
+The raster data should already have been downloaded and placed in the appropriate
+location by dealing with the dependencies in the README.
+
+Reading a large raster in with the raster package does not take up much
+memory, because it leaves it on disk.  So we will open a connection to
+the big, massive raster using the `brick` function from the `raster` package
+and then crop it:
+```{r}
+hypso <- brick("geo-spatial/HYP_HR_SR_OB_DR/HYP_HR_SR_OB_DR.tif")
+hypso_cropped <- crop(hypso, extent(domain))
+```
+
+Now, we just add `hypso_cropped` in with `ggspatial::spatial_layer()` below all of our
+other layers (dropping the coastlines), and we might make country and state lines thinner (and different sizes):
+```{r}
+big_one <- ggplot() +
+  ggspatial::layer_spatial(hypso_cropped) +
+  geom_sf(data = countries_cropped, fill = NA, size = 0.15) +
+  geom_sf(data = states_cropped, fill = NA, size = 0.1) +
+  ggspatial::layer_spatial(genoscape_rgba) +
+  theme_bw() +
+  coord_sf(crs = st_crs(lamproj))
+
+big_one
+```
+
+Seeing that sort of small on the screen does not really do justice to it.  You can `ggsave` it
+in whatever size is desired.  For whatever the final product is going to be, you will
+want to mess with the line thickness on those country and state borders...
+
+## Clipping a rectangle out of that
+
+While that looks nice, most people might prefer to have the
+background part there in a rectangle, rather than a conic surface.  We can
+do that by setting the xlim and ylim to `coord_sf()`.  But, note that
+we have to do that in terms of the units that the Lambert projection is referring to,
+not just in simple lat-long coordinates (i.e. we have to project those too!)
+
+So, imagine that we want to chop out a rectangle from Haida Gwai, off the coast of
+British Columbia, straight down and straight across to the right (on the image).
+And we would want the bottom and right sides determined by a point in the bottom
+right that has the y-value of the tip of Florida, and an x-value which is essentially
+at St. John, New Brunswick.  Then, we need to determine the x and y coordinates of those
+points under our Lambert conformal conic projection.  We do that by making a simple features
+tibble of the lat-longs for those points and then projecting it.
+
+```{r}
+# Here are lat longs for those points
+pts <- tribble(
+  ~place, ~long, ~lat,
+  "HaidaGwai", -132.3143526, 53.7298050,
+  "FloridaTip", -80.8032237, 25.0909780,
+  "St.Johns",  -65.943453, 45.291222
+)
+
+# here we turn that into an sf object
+pts_sf <- st_as_sf(pts, coords = c("long", "lat"),
+                   crs = 4326)  # 4326 is shorthand for "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+# and now we transform it to lambert
+pts_lambert <- st_transform(pts_sf, crs = lamproj)
+
+# when we print it in a notebook, we can see that the geometry is a list
+# column, but can't see the values:
+pts_lambert
+```
+
+So, for you to be able to see the values we can just print it like this:
+```{r}
+# just note the values:
+st_as_text(pts_lambert$geometry)
+```
+
+That means we want xlim = c(-2010114, 2452877) and ylim = c(-1366911, 1821869).
+Let's try that:
+```{r}
+rectangled <- ggplot() +
+  ggspatial::layer_spatial(hypso_cropped) +
+  geom_sf(data = countries_cropped, fill = NA, size = 0.15) +
+  geom_sf(data = states_cropped, fill = NA, size = 0.1) +
+  ggspatial::layer_spatial(genoscape_rgba) +
+  theme_bw() +
+  coord_sf(
+    crs = st_crs(lamproj),
+    xlim = c(-2010114, 2452877),
+    ylim = c(-1366911, 1821869),
+    expand = FALSE)  # expand = FALSE means put the axes right at the xlim and ylim
+
+rectangled
+```
+
+Okay, that does it.  In reality, you would probably want to expand the original `domain`
+to be a bigger chunk of the earth, so that when you cut stuff off there was more left...
+
+
+# A final note
+
+If you want to add more elements to the figure you can do so by giving them
+a lat-long and making a simple features tibble out of it and then putting them
+there using geom_sf().  It all fits nicely
+into the ggplot framework.
+
+Also, the final genoscape figure in the paper included the wintering birds
+as well. For reasons of computing time, we aren't going to show the exact
+code for putting that together---it takes a long time to render.  But,
+it should be obvious from the above how it was done.
+
+# Running Time
+
+Running the code and rendering this notebook required approximately this much time
+on a Mac laptop of middling speed, listed in `HH:MM:SS`.
+```{r}
+td <- Sys.time() - start_time
+tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
+dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
+write_rds(tdf, "stored_run_times/006.rds")
+tdf
+``` 
+
+# Session Info
+
+```{r}
+sessioninfo::session_info()
+```
+
