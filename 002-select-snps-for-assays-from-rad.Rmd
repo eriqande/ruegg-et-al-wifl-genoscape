@@ -35,8 +35,59 @@ into subspecies groups (`Subspecies_Pure`) and also groups within subspecies
 (`Within_Subspecies`) that we would like to be able to resolve.  For a number of
 different pairwise comparisons between these groups, we used the allele frequencies
 estimated from the RAD seq data to compute the expected probability of
-correct assignment of an individual of each group to its group for details of these
-calculations see pg. 118 in @clemento2014evaluation. For each such
+correct assignment of an individual of each group to its group. These
+calculations are identical to those that appear on  pg. 118 in @clemento2014evaluation;
+however we summarize it here, as well. 
+
+The central ingredient is
+what we call the expected _correct assignment probability_ (abbreviated `cap`
+in the tables of output below).  Let the frequency of the alternate allele
+in population 1 be $p$, while the reference allele is at frequency $1 - p$.
+Under the assumption of Hardy-Weinberg equilibrium, the expected frequencies
+of the three genotypes are:
+\[
+\begin{aligned}
+P_{00} &= (1 - p)^2 \\
+P_{01} &= 2p(1-p) \\
+P_{11} &= p^2, \\
+\end{aligned}
+\]
+where 00 denotes the genotype with two copies of the reference allele, 11
+denotes a homozygote with two copies of the alternate allele, and 01 denotes
+a heterozygote genotype.
+
+In population 2, let the alternate allele frequency be $q$, with the corresponding
+expected genotype frequencies being:
+\[
+\begin{aligned}
+Q_{00} &= (1 - q)^2 \\
+Q_{01} &= 2q(1-q) \\
+Q_{11} &= q^2. \\
+\end{aligned}
+\]
+With these genotype frequencies, the probability that a randomly drawn
+individual from population 1 would be correctly assigned to population 1, as
+opposed to population 2, when using just this locus for population assignment
+is simply:
+\[
+C_1 = P_{00}\delta(P_{00} \geq Q_{00}) + P_{00}\delta(P_{01} \geq Q_{01}) + P_{11}\delta(P_{11} \geq Q_{11}),
+\]
+where $\delta(x)$ equals 1 when statement $x$ is true and 0 otherwise.
+Likewise, the probability that a randomly drawn
+individual from population 2 would be correctly assigned to population 2, as
+opposed to population 1, when using just this locus for population assignment
+is:
+\[
+C_2 = Q_{00}\delta(Q_{00} > P_{00}) + Q_{00}\delta(Q{01} > P_{01}) + Q_{11}\delta(Q_{11} > P_{11}).
+\]
+We define the correct probability as the mean of those two terms:
+$\mathrm{CAP} = \frac{C_1 + C_2}{2}$.  In the following, $\mathrm{CAP}$
+is calculated for a number of relevant comparisons between populations/groups;
+the $\mathrm{CAP}$ values are used to rank the loci within each of these
+comparisons; and then, by cycling over the comparisons and taking the remaining
+top-ranked loci for each, a final list of markers is obtained as explained below.
+
+For each relevant pairwise population/group
 comparison, we chose the top 300 markers, and then cycled over those comparisons,
 taking a single such top SNP from each comparison, and moving down the lists until
 we had a number of candidates.  We then further filtered these candidates according

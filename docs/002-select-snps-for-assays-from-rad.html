@@ -1645,7 +1645,7 @@ summary {
 
 <h1 class="title toc-ignore">Select SNPs for Assay Development from RAD-Seq Data</h1>
 <h4 class="author">Eric C. Anderson</h4>
-<h4 class="date">Last Updated: 2021-01-16</h4>
+<h4 class="date">Last Updated: 2021-01-26</h4>
 
 </div>
 
@@ -1696,7 +1696,26 @@ library(snps2assays)
 dir.create(&quot;outputs/002&quot;, recursive = TRUE, showWarnings = FALSE)</code></pre>
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>In order to select a number of assays that should have high power for resolving different groups of Willow Flycatchers, we divided individuals into subspecies groups (<code>Subspecies_Pure</code>) and also groups within subspecies (<code>Within_Subspecies</code>) that we would like to be able to resolve. For a number of different pairwise comparisons between these groups, we used the allele frequencies estimated from the RAD seq data to compute the expected probability of correct assignment of an individual of each group to its group for details of these calculations see pg. 118 in <span class="citation">Clemento et al. (2014)</span>. For each such comparison, we chose the top 300 markers, and then cycled over those comparisons, taking a single such top SNP from each comparison, and moving down the lists until we had a number of candidates. We then further filtered these candidates according to whether Fluidigm assays could be designed for them.</p>
+<p>In order to select a number of assays that should have high power for resolving different groups of Willow Flycatchers, we divided individuals into subspecies groups (<code>Subspecies_Pure</code>) and also groups within subspecies (<code>Within_Subspecies</code>) that we would like to be able to resolve. For a number of different pairwise comparisons between these groups, we used the allele frequencies estimated from the RAD seq data to compute the expected probability of correct assignment of an individual of each group to its group. These calculations are identical to those that appear on pg. 118 in <span class="citation">Clemento et al. (2014)</span>; however we summarize it here, as well.</p>
+<p>The central ingredient is what we call the expected <em>correct assignment probability</em> (abbreviated <code>cap</code> in the tables of output below). Let the frequency of the alternate allele in population 1 be <span class="math inline">\(p\)</span>, while the reference allele is at frequency <span class="math inline">\(1 - p\)</span>. Under the assumption of Hardy-Weinberg equilibrium, the expected frequencies of the three genotypes are: <span class="math display">\[
+\begin{aligned}
+P_{00} &amp;= (1 - p)^2 \\
+P_{01} &amp;= 2p(1-p) \\
+P_{11} &amp;= p^2, \\
+\end{aligned}
+\]</span> where 00 denotes the genotype with two copies of the reference allele, 11 denotes a homozygote with two copies of the alternate allele, and 01 denotes a heterozygote genotype.</p>
+<p>In population 2, let the alternate allele frequency be <span class="math inline">\(q\)</span>, with the corresponding expected genotype frequencies being: <span class="math display">\[
+\begin{aligned}
+Q_{00} &amp;= (1 - q)^2 \\
+Q_{01} &amp;= 2q(1-q) \\
+Q_{11} &amp;= q^2. \\
+\end{aligned}
+\]</span> With these genotype frequencies, the probability that a randomly drawn individual from population 1 would be correctly assigned to population 1, as opposed to population 2, when using just this locus for population assignment is simply: <span class="math display">\[
+C_1 = P_{00}\delta(P_{00} \geq Q_{00}) + P_{00}\delta(P_{01} \geq Q_{01}) + P_{11}\delta(P_{11} \geq Q_{11}),
+\]</span> where <span class="math inline">\(\delta(x)\)</span> equals 1 when statement <span class="math inline">\(x\)</span> is true and 0 otherwise. Likewise, the probability that a randomly drawn individual from population 2 would be correctly assigned to population 2, as opposed to population 1, when using just this locus for population assignment is: <span class="math display">\[
+C_2 = Q_{00}\delta(Q_{00} &gt; P_{00}) + Q_{00}\delta(Q{01} &gt; P_{01}) + Q_{11}\delta(Q_{11} &gt; P_{11}).
+\]</span> We define the correct probability as the mean of those two terms: <span class="math inline">\(\mathrm{CAP} = \frac{C_1 + C_2}{2}\)</span>. In the following, <span class="math inline">\(\mathrm{CAP}\)</span> is calculated for a number of relevant comparisons between populations/groups; the <span class="math inline">\(\mathrm{CAP}\)</span> values are used to rank the loci within each of these comparisons; and then, by cycling over the comparisons and taking the remaining top-ranked loci for each, a final list of markers is obtained as explained below.</p>
+<p>For each relevant pairwise population/group comparison, we chose the top 300 markers, and then cycled over those comparisons, taking a single such top SNP from each comparison, and moving down the lists until we had a number of candidates. We then further filtered these candidates according to whether Fluidigm assays could be designed for them.</p>
 <p>To the final set of candidates we also added the Climate Associated SNPs from <span class="citation">Ruegg et al. (2018)</span>.</p>
 </div>
 <div id="finding-highly-diverged-snps-the-divergence-snps-from-the-rad-seq-data" class="section level1">
@@ -2016,13 +2035,13 @@ sum(!candidate_snps$could_be_too_close)</code></pre>
 <pre><code>## [1] 210</code></pre>
 <p>So, that has given us, potentially, 210 candidates. That is more than 192, but some of them might not be designable because of the GC content. But, now we need to decide which ones to toss when they are too close together on the genome. There are only a few of these and it will be good to get eyes on the data anyway. So, at this point we write out the file.</p>
 <pre class="r"><code>write_csv(candidate_snps, file = &quot;outputs/002/candidate_snps_untossed.csv&quot;)</code></pre>
-<p>Subsequently we got our eyes on that output and then hand-selected which ones to toss by putting a “TRUE” in the “toss_it” column and saving the result in exactly the same format in a file saved in our repository in <code>stored_results/candidate_snps_tossed.csv</code>.</p>
+<p>Subsequently we got our eyes on that output and then hand-selected which ones to toss by putting a “TRUE” in the “toss_it” column and saving the result in exactly the same format in a file saved in our repository in <code>stored_results/002/candidate_snps_tossed.csv</code>.</p>
 </div>
 </div>
 <div id="fetching-allelic-types-and-sequences-and-preparing-the-assay-order" class="section level1">
 <h1>Fetching Allelic types and sequences, and preparing the assay order</h1>
 <p>Our list of 210 final candidates is here:</p>
-<pre class="r"><code>final_candidates &lt;- read_csv(&quot;stored_results/candidate_snps_tossed.csv&quot;) %&gt;%
+<pre class="r"><code>final_candidates &lt;- read_csv(&quot;stored_results/002/candidate_snps_tossed.csv&quot;) %&gt;%
   filter(toss_it == FALSE)</code></pre>
 <div id="getting-allelic-types" class="section level2">
 <h2>Getting allelic types</h2>
@@ -2072,14 +2091,14 @@ Outputting VCF file...
 [kruegg@n2238 WIFL_10.15.16]$ bgzip design-variants.recode.vcf 
 
 # then that was tabix indexed.</code></pre>
-<p><code>design-variants.recode.vcf</code> is placed in <code>stored_results</code> in the repository.</p>
+<p><code>design-variants.recode.vcf</code> is placed in <code>stored_results/002</code> in the repository.</p>
 </div>
 <div id="retrieving-variants-that-overlap-our-candidate-regions" class="section level2">
 <h2>Retrieving variants that overlap our candidate regions</h2>
 <p>Now, we can retrieve variants overlapping our candidate regions pretty easily, but we need to keep each such variant associated with the actual SNP, so we did that with a little shell programming here:</p>
 <pre class="sh"><code>while read line; do 
   array=($line); 
-  tabix stored_results/design-variants.recode.vcf.gz  &quot;${array[1]}&quot; | \
+  tabix stored_results/002/design-variants.recode.vcf.gz  &quot;${array[1]}&quot; | \
   awk -v snp=&quot;${array[0]}&quot; &#39;
     {printf(&quot;%s\t%s\n&quot;, snp, $0);}
   &#39;;
@@ -2193,7 +2212,7 @@ tdf &lt;- hms::as_hms(ceiling(hms::as_hms(td)))
 dir.create(&quot;stored_run_times&quot;, showWarnings = FALSE, recursive = TRUE)
 write_rds(tdf, &quot;stored_run_times/002.rds&quot;)
 tdf</code></pre>
-<pre><code>## 00:00:34</code></pre>
+<pre><code>## 00:00:37</code></pre>
 </div>
 <div id="session-info" class="section level1">
 <h1>Session Info</h1>
@@ -2208,70 +2227,131 @@ tdf</code></pre>
 ##  collate  en_US.UTF-8                 
 ##  ctype    en_US.UTF-8                 
 ##  tz       America/Denver              
-##  date     2021-01-16                  
+##  date     2021-01-26                  
 ## 
 ## ─ Packages ───────────────────────────────────────────────────────────────────
-##  package         * version date       lib source        
-##  assertthat        0.2.1   2019-03-21 [1] CRAN (R 4.0.2)
-##  backports         1.2.1   2020-12-09 [1] CRAN (R 4.0.2)
-##  broom             0.7.3   2020-12-16 [1] CRAN (R 4.0.2)
-##  cellranger        1.1.0   2016-07-27 [1] CRAN (R 4.0.2)
-##  cli               2.2.0   2020-11-20 [1] CRAN (R 4.0.2)
-##  colorspace        2.0-0   2020-11-11 [1] CRAN (R 4.0.2)
-##  crayon            1.3.4   2017-09-16 [1] CRAN (R 4.0.2)
-##  DBI               1.1.0   2019-12-15 [1] CRAN (R 4.0.2)
-##  dbplyr            2.0.0   2020-11-03 [1] CRAN (R 4.0.2)
-##  digest            0.6.27  2020-10-24 [1] CRAN (R 4.0.2)
-##  dplyr           * 1.0.2   2020-08-18 [1] CRAN (R 4.0.2)
-##  ellipsis          0.3.1   2020-05-15 [1] CRAN (R 4.0.2)
-##  evaluate          0.14    2019-05-28 [1] CRAN (R 4.0.1)
-##  fansi             0.4.1   2020-01-08 [1] CRAN (R 4.0.2)
-##  farver            2.0.3   2020-01-16 [1] CRAN (R 4.0.2)
-##  forcats         * 0.5.0   2020-03-01 [1] CRAN (R 4.0.2)
-##  fs                1.5.0   2020-07-31 [1] CRAN (R 4.0.2)
-##  generics          0.1.0   2020-10-31 [1] CRAN (R 4.0.2)
-##  genoscapeRtools * 0.1.0   2021-01-14 [1] local         
-##  ggplot2         * 3.3.2   2020-06-19 [1] CRAN (R 4.0.2)
-##  glue              1.4.2   2020-08-27 [1] CRAN (R 4.0.2)
-##  gtable            0.3.0   2019-03-25 [1] CRAN (R 4.0.2)
-##  haven             2.3.1   2020-06-01 [1] CRAN (R 4.0.2)
-##  hms               0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
-##  htmltools         0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
-##  httr              1.4.2   2020-07-20 [1] CRAN (R 4.0.2)
-##  jsonlite          1.7.2   2020-12-09 [1] CRAN (R 4.0.2)
-##  knitr             1.30    2020-09-22 [1] CRAN (R 4.0.2)
-##  labeling          0.4.2   2020-10-20 [1] CRAN (R 4.0.2)
-##  lifecycle         0.2.0   2020-03-06 [1] CRAN (R 4.0.2)
-##  lubridate         1.7.9.2 2020-11-13 [1] CRAN (R 4.0.2)
-##  magrittr          2.0.1   2020-11-17 [1] CRAN (R 4.0.2)
-##  modelr            0.1.8   2020-05-19 [1] CRAN (R 4.0.2)
-##  munsell           0.5.0   2018-06-12 [1] CRAN (R 4.0.2)
-##  pillar            1.4.7   2020-11-20 [1] CRAN (R 4.0.2)
-##  pkgconfig         2.0.3   2019-09-22 [1] CRAN (R 4.0.2)
-##  purrr           * 0.3.4   2020-04-17 [1] CRAN (R 4.0.2)
-##  R6                2.5.0   2020-10-28 [1] CRAN (R 4.0.2)
-##  Rcpp              1.0.5   2020-07-06 [1] CRAN (R 4.0.2)
-##  readr           * 1.4.0   2020-10-05 [1] CRAN (R 4.0.2)
-##  readxl            1.3.1   2019-03-13 [1] CRAN (R 4.0.2)
-##  reprex            0.3.0   2019-05-16 [1] CRAN (R 4.0.2)
-##  rlang             0.4.9   2020-11-26 [1] CRAN (R 4.0.2)
-##  rmarkdown         2.6     2020-12-14 [1] CRAN (R 4.0.2)
-##  rstudioapi        0.13    2020-11-12 [1] CRAN (R 4.0.2)
-##  rvest             0.3.6   2020-07-25 [1] CRAN (R 4.0.2)
-##  scales            1.1.1   2020-05-11 [1] CRAN (R 4.0.2)
-##  sessioninfo       1.1.1   2018-11-05 [1] CRAN (R 4.0.2)
-##  snps2assays     * 0.1     2021-01-14 [1] local         
-##  stringi           1.5.3   2020-09-09 [1] CRAN (R 4.0.2)
-##  stringr         * 1.4.0   2019-02-10 [1] CRAN (R 4.0.2)
-##  tibble          * 3.0.4   2020-10-12 [1] CRAN (R 4.0.2)
-##  tidyr           * 1.1.2   2020-08-27 [1] CRAN (R 4.0.2)
-##  tidyselect        1.1.0   2020-05-11 [1] CRAN (R 4.0.2)
-##  tidyverse       * 1.3.0   2019-11-21 [1] CRAN (R 4.0.2)
-##  vctrs             0.3.6   2020-12-17 [1] CRAN (R 4.0.2)
-##  withr             2.3.0   2020-09-22 [1] CRAN (R 4.0.2)
-##  xfun              0.19    2020-10-30 [1] CRAN (R 4.0.2)
-##  xml2              1.3.2   2020-04-23 [1] CRAN (R 4.0.2)
-##  yaml              2.2.1   2020-02-01 [1] CRAN (R 4.0.2)
+##  package         * version date       lib
+##  assertthat        0.2.1   2019-03-21 [1]
+##  backports         1.2.1   2020-12-09 [1]
+##  broom             0.7.3   2020-12-16 [1]
+##  cellranger        1.1.0   2016-07-27 [1]
+##  cli               2.2.0   2020-11-20 [1]
+##  colorspace        2.0-0   2020-11-11 [1]
+##  crayon            1.3.4   2017-09-16 [1]
+##  DBI               1.1.0   2019-12-15 [1]
+##  dbplyr            2.0.0   2020-11-03 [1]
+##  digest            0.6.27  2020-10-24 [1]
+##  dplyr           * 1.0.2   2020-08-18 [1]
+##  ellipsis          0.3.1   2020-05-15 [1]
+##  evaluate          0.14    2019-05-28 [1]
+##  fansi             0.4.1   2020-01-08 [1]
+##  farver            2.0.3   2020-01-16 [1]
+##  forcats         * 0.5.0   2020-03-01 [1]
+##  fs                1.5.0   2020-07-31 [1]
+##  generics          0.1.0   2020-10-31 [1]
+##  genoscapeRtools * 0.1.0   2021-01-17 [1]
+##  ggplot2         * 3.3.2   2020-06-19 [1]
+##  glue              1.4.2   2020-08-27 [1]
+##  gtable            0.3.0   2019-03-25 [1]
+##  haven             2.3.1   2020-06-01 [1]
+##  hms               0.5.3   2020-01-08 [1]
+##  htmltools         0.5.0   2020-06-16 [1]
+##  httr              1.4.2   2020-07-20 [1]
+##  jsonlite          1.7.2   2020-12-09 [1]
+##  knitr             1.30    2020-09-22 [1]
+##  labeling          0.4.2   2020-10-20 [1]
+##  lifecycle         0.2.0   2020-03-06 [1]
+##  lubridate         1.7.9.2 2020-11-13 [1]
+##  magrittr          2.0.1   2020-11-17 [1]
+##  modelr            0.1.8   2020-05-19 [1]
+##  munsell           0.5.0   2018-06-12 [1]
+##  pillar            1.4.7   2020-11-20 [1]
+##  pkgconfig         2.0.3   2019-09-22 [1]
+##  purrr           * 0.3.4   2020-04-17 [1]
+##  R6                2.5.0   2020-10-28 [1]
+##  Rcpp              1.0.5   2020-07-06 [1]
+##  readr           * 1.4.0   2020-10-05 [1]
+##  readxl            1.3.1   2019-03-13 [1]
+##  reprex            0.3.0   2019-05-16 [1]
+##  rlang             0.4.9   2020-11-26 [1]
+##  rmarkdown         2.6     2020-12-14 [1]
+##  rstudioapi        0.13    2020-11-12 [1]
+##  rvest             0.3.6   2020-07-25 [1]
+##  scales            1.1.1   2020-05-11 [1]
+##  sessioninfo       1.1.1   2018-11-05 [1]
+##  snps2assays     * 0.1     2021-01-17 [1]
+##  stringi           1.5.3   2020-09-09 [1]
+##  stringr         * 1.4.0   2019-02-10 [1]
+##  tibble          * 3.0.4   2020-10-12 [1]
+##  tidyr           * 1.1.2   2020-08-27 [1]
+##  tidyselect        1.1.0   2020-05-11 [1]
+##  tidyverse       * 1.3.0   2019-11-21 [1]
+##  vctrs             0.3.6   2020-12-17 [1]
+##  withr             2.3.0   2020-09-22 [1]
+##  xfun              0.19    2020-10-30 [1]
+##  xml2              1.3.2   2020-04-23 [1]
+##  yaml              2.2.1   2020-02-01 [1]
+##  source                                   
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.1)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  Github (eriqande/genoscapeRtools@3e1dbfc)
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  Github (eriqande/snps2assays@8666f06)    
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
+##  CRAN (R 4.0.2)                           
 ## 
 ## [1] /Users/eriq/Library/R/4.0/library
 ## [2] /Library/Frameworks/R.framework/Versions/4.0/Resources/library</code></pre>
