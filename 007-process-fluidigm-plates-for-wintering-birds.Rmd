@@ -1,0 +1,371 @@
+---
+title: "Process Fluidigm Panel 3"
+author: "Eric C. Anderson"
+date: "Last Updated: `r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+  html_notebook:
+    toc: true
+bibliography: references.bib
+---
+
+What we call Panel 3 of assays includes the 96 SNPs that we chose to use
+to type the wintering birds so as to assign them to different breeding
+regions in North America.
+
+In this notebook, we process the raw output of four plates (plates 4 through 7)
+of birds typed with Fluidigm panel 3.
+
+
+We process the call-map output from the Fludigm software to make genotype files that
+are easily read by different programs, and by R.  The call-map CSV files here have been
+converted to have Unix line endings (from the PC line endings that they typically have
+by default.)
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+start_time <- Sys.time()
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+
+dir.create("outputs/007", recursive = TRUE, showWarnings = FALSE)
+```
+
+# Read the chips and process with shell scripts
+
+```{sh, results='hide'}
+# run things through some scripts
+cd data/fluidigm_panel_3_chips;
+
+../../script/process-fluidigm-call-map-results.sh Plate*_Panel3.csv; 
+mv AllFiles_TwoCol.txt ../../outputs/007/panel3_all_two_col.txt; 
+mv AllZeroReports.txt ../../outputs/007/panel3_zero_reports.txt;
+# clean up all the intermediate files
+rm *gsisim* *twocol* xxxtempxxx
+
+```
+
+# Read into R, add meta-data etc.
+
+We have individuals genotyped in several different plates/panels, etc.
+Some might have been typed in more than one such unit.  We call these geno_units,
+and we keep track of them for purposes of identifying which unit's results
+we will retain.
+
+## Panel 3 
+
+Join the panels. 
+
+```{r, message=FALSE, warning=FALSE}
+# then read them in
+panel3 <- read_tsv("outputs/007/panel3_all_two_col.txt") %>%
+  rename(Field_Number = Sample_ID)
+dim(panel3)
+```
+
+That is 376 rows (individuals) corresponding to 94 birds per plate for 4 plates.
+There are 193 columns, which is 1 ID column and then two columns for each of
+96 SNPs.
+
+
+
+
+
+
+
+
+### Put the data into long format
+
+To do this, we put it all in long format, and then it is entirely easier to deal with downstream:
+```{r}
+nc <- ncol(panel3)
+# name the gene copies .1 and .2
+names(panel3)[seq(2, nc, by = 2)] <- paste(
+  names(panel3)[seq(2, nc, by = 2)], 
+  ".1", 
+  sep = ""
+)
+names(panel3)[seq(3, nc, by = 2)] <- str_replace(
+  names(panel3)[seq(3, nc, by = 2)], 
+  "_1$", 
+  ".2"
+)
+
+panel3_long <- panel3 %>%
+  pivot_longer(
+    cols = -Field_Number,
+    names_to = "locgc",
+    values_to = "allele"
+  ) %>%
+  separate(locgc, into = c("assay_name", "gene_copy"), sep = "\\.") %>%
+  mutate(
+    allele_ACGT = recode(
+      allele,
+      `1` = "A",
+      `2` = "C",
+      `3` = "G",
+      `4` = "T",
+      `0` = NA_character_
+    ),
+    geno_unit = "panel3"
+  ) %>%
+  select(geno_unit, everything())
+
+```
+
+
+## Plate 16
+
+There were some plates that included re-runs and additional samples.   These
+are stored in the `data/fluidigm_additional_chips` folder.
+```{r}
+p16 <- read_csv("data/fluidigm_additional_chips/WIFL.Plate16_PopID_CBdetailedResults.csv") %>%
+  select(Name, Assay, Converted) %>%
+  rename(
+    Field_Number = Name,
+    assay_name = Assay
+    ) %>%
+  filter(Field_Number != "NTC") %>%
+  mutate(
+    Converted = ifelse(
+      Converted %in% c("No Call", "Invalid"),
+      NA, 
+      Converted
+    ),
+    geno_unit = "plate16"
+  ) %>%
+  select(geno_unit, everything())
+```
+
+And now we can break those genotypes into a long format:
+```{r}
+p16_long <- p16 %>%
+  separate(Converted, into = c("1", "2"), remove = TRUE, sep = ":") %>%
+  pivot_longer(
+    cols = c(`1`, `2`),
+    names_to = "gene_copy",
+    values_to = "allele_ACGT"
+  ) %>%
+  mutate(
+    allele = case_when(
+      allele_ACGT == "A" ~ 1,
+      allele_ACGT == "C" ~ 2,
+      allele_ACGT == "G" ~ 3,
+      allele_ACGT == "T" ~ 4
+    )
+  )
+```
+
+
+## Combine panel3 and plate16
+
+```{r}
+p316 <- bind_rows(
+  panel3_long,
+  p16_long
+)
+```
+
+See if there are any re-genos:
+```{r}
+p316 %>%
+  count(geno_unit, Field_Number) %>%
+  count(Field_Number) %>%
+  filter(n > 1)
+```
+
+It would appear that there are no re-genos there.
+
+
+## Add meta data
+
+Then we have to associate the assay names with the names based on scaffold
+and position and the REF and ALT at each of those.
+```{r}
+assay_meta <- read_csv("data/WIFL_fluidigm_assay_info.csv") %>%
+  dplyr::select(SNP_Name, CHROM, REF, ALT)
+
+p316_2 <- left_join(
+  p316,
+  assay_meta,
+  by = c("assay_name" = "SNP_Name")
+) %>%
+  mutate(
+    allele_01 = case_when( # here we code alleles as 0 = REF, 1 = ALT, NA = missing
+      is.na(allele_ACGT) ~ NA_integer_,
+      allele_ACGT == REF ~ 0L,
+      allele_ACGT == ALT ~ 1L,
+      TRUE ~ -999L
+    )
+  ) %>%
+  rename(CHROMPOS = CHROM)
+
+
+```
+
+That is a long format that is worth seeing, because it will make it fairly straightforward
+to combine different data sets, etc.  Here is what it looks like:
+```{r}
+head(p316_2)
+```
+
+We write those genotypes out in case we need them later.
+```{r}
+write_rds(p316_2, file = "outputs/007/470_birds_at_96_panel3_fluidigm_snps.rds", compress = "xz")
+```
+
+## Add birds typed on earlier plates
+
+We might have some wintering birds typed on other plates, so read those
+earlier plates in and only keep the 96 assays of panel 3.
+```{r}
+the564 <- read_rds("outputs/003/564_birds_at_192_fluidigm_snps.rds") %>%
+  mutate(geno_unit = "early_plates") %>%
+  select(geno_unit, everything()) %>%
+  semi_join(panel3_long, by = "assay_name")
+
+all_them <- bind_rows(p316_2, the564) %>%
+  semi_join(panel3_long, by = "assay_name") %>%
+  mutate(allele = ifelse(allele == 0, NA, allele))
+
+```
+
+## Add some meta-data to those
+
+We also attach some other names to them and note their stage.
+
+```{r}
+app1_WM <- read_csv("data/appendices/app1-winter-indivs-assignments-and-genos.csv") 
+
+needed_meta <- app1_WM %>%
+  filter(geno_method == "fluidigm") %>%
+  select(Field_Number, geno_method, Lat, Long, Stage)
+
+winter_genos <- inner_join(all_them, needed_meta, by = "Field_Number") %>%
+  select(Field_Number, geno_method, Lat, Long, Stage, everything())  %>%
+  filter(Stage == "Wintering")
+  
+```
+
+Now, check how many genotypes there are, because there may have been overlap on
+some assays
+```{r}
+winter_genos %>%
+  count(Field_Number) %>%
+  count(n)
+```
+So, 21 of the individuals don't have a value recorded at one locus,
+it appears.  Not to worry, that will become an NA when we widen it.
+
+Look at missing data:
+````{r}
+# what are the possible allele values?
+winter_genos %>%
+  count(allele, allele_ACGT)
+```
+
+And, what is the distribution of the number of typed loci?
+```{r}
+loci_typed <- winter_genos %>%
+  filter(!is.na(allele)) %>%
+  group_by(Field_Number) %>%
+  summarise(num_non_missing_loci = n() / 2)
+
+ggplot(loci_typed, aes(x = num_non_missing_loci)) +
+  geom_histogram(binwidth = 1)
+```
+
+# Write out a data frame suitable for use in rubias
+
+And, at the same time, we want to write out a data frame that we
+can compare to the wintering birds data in the appendix.
+
+We need a wide data frame with columns
+`sample_type`, `repunit`, `collection`, and `indiv`, as well
+as two columns for each locus.  We will use the allele base calls.
+
+```{r}
+tmp <- winter_genos %>%
+  select(Field_Number, CHROMPOS, gene_copy, allele_ACGT) %>%
+  arrange(Field_Number, CHROMPOS, allele_ACGT)
+
+# make a wide data frame to compare to the appendix
+compare_to_appendix <- tmp %>%
+  group_by(Field_Number, CHROMPOS) %>%
+  summarise(geno = paste(allele_ACGT, collapse = ":")) %>%
+  ungroup() %>%
+  mutate(geno = ifelse(geno == "NA:NA", NA, geno)) %>%
+  pivot_wider(
+    names_from = CHROMPOS,
+    values_from = geno
+  )
+
+# need to insert some code here to confirm that this gives us
+# what we are distributing in the appendix
+
+
+# now, make a rubias compliant tibble
+winter_wide <- tmp %>%
+  pivot_wider(
+    names_from = c(CHROMPOS, gene_copy),
+    names_sep = ".",
+    values_from = allele_ACGT
+  )
+fni <- seq(2, ncol(winter_wide), by = 2)
+names(winter_wide)[fni] <- str_replace(
+  names(winter_wide)[fni],
+  "\\.1$",
+  ""
+) 
+
+# then, add the required columns
+winter_rubias <- winter_wide %>%
+  mutate(
+    sample_type = "mixture",
+    repunit = NA_character_,
+    collection = "winter"
+  ) %>%
+  rename(indiv = Field_Number) %>%
+  select(
+    sample_type,
+    repunit,
+    collection,
+    indiv,
+    everything()
+  )
+
+# write that out to outputs
+write_rds(
+  winter_rubias,
+  file = "outputs/007/winter_rubias.rds",
+  compress = "xz"
+)
+
+```
+
+
+# Running Time
+
+Running the code and rendering this notebook required approximately this much time
+on a Mac laptop of middling speed, listed in `HH:MM:SS`.
+```{r}
+td <- Sys.time() - start_time
+tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
+dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
+write_rds(tdf, "stored_run_times/003.rds")
+tdf
+```
+
+# Session Info
+
+```{r}
+sessioninfo::session_info()
+```
+
