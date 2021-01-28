@@ -311,8 +311,11 @@ compare_to_appendix <- tmp %>%
 # what we are distributing in the appendix
 
 
-# now, make a rubias compliant tibble
+# now, make a rubias compliant tibble.  It turns out that we have
+# to arrange by gene-copy on to get the .1 and .2 columns in the
+# correct order.  Who knew...
 winter_wide <- tmp %>%
+  arrange(Field_Number, CHROMPOS, gene_copy) %>%
   pivot_wider(
     names_from = c(CHROMPOS, gene_copy),
     names_sep = ".",

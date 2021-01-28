@@ -26,6 +26,8 @@ We use the spatial groups determined in 006 as the reporting units
 ```{r, message=FALSE}
 library(tidyverse)
 library(rubias)
+library(sf)
+library(ggspatial)
 
 dir.create("outputs/008", recursive = TRUE, showWarnings = FALSE)
 ```
@@ -245,6 +247,70 @@ winter_MAP %>%
 As it is showing 363 TRUEs, that means that the assignments listed
 in appendix S1 are correct.
 
+# finally, put those points on a map
+
+```{r}
+# get assignments and add Lat-Longs and then jitter them a little
+set.seed(100)
+winter_points <- winter_MAP %>%
+  select(indiv, repunit) %>%
+  left_join(
+    winter_meta %>% select(Field_Number, Lat, Long),
+    by = c("indiv" = "Field_Number")
+  ) %>%
+  mutate(
+    jitLat = Lat + runif(n(), min = -0.5, max = 0.5 ),
+    jitLong = Long + runif(n(), min = -0.5, max = 0.5 )
+  ) %>%
+  group_by(repunit) %>%
+  mutate(n_in_repu = n()) %>%
+  arrange(desc(n_in_repu))
+
+# note that we arranged these so the last ones (and hopefully, thus, the
+# ones plotted on top) are from the least frequent repunits.
+```
+
+Make a simple basemap with Natural Earth data:
+```{r}
+domain <- c(
+  xmin = -125,
+  xmax = -60,
+  ymin = -2,
+  ymax = 30
+)
+coast_cropped <- st_read("geo-spatial/ne_10m_coastline/ne_10m_coastline.shp") %>%
+  st_crop(domain)
+countries_cropped <-  st_read("geo-spatial/ne_10m_admin_0_boundary_lines_land/ne_10m_admin_0_boundary_lines_land.shp") %>%
+  st_crop(domain)
+states_cropped <- st_read("geo-spatial/ne_10m_admin_1_states_provinces_lines/ne_10m_admin_1_states_provinces_lines.shp") %>%
+  st_crop(domain)
+
+basemap <- ggplot() +
+  geom_sf(data = coast_cropped, colour = "gray") +
+  geom_sf(data = countries_cropped, colour = "gray", fill = NA) +
+  geom_sf(data = states_cropped, colour = "gray", fill = NA, size = 0.1) +
+  theme_bw()
+
+basemap
+
+```
+
+Then add some points to that
+```{r}
+source("R/colors.R")
+basemap + geom_spatial_point(
+    data = winter_points, 
+    mapping = aes(x = jitLong, y = jitLat, fill = repunit), 
+    size = 1,
+    shape = 21,
+  ) +
+  scale_fill_manual(values = cluster_colors)
+```
+
+That gives a nice picture.  For the final figure in the paper, the points were
+moved around by hand so that each was was maximally visible, and, of course, the
+Natural Earth rasters were used as a background as described in 006.
+
 
 # Running Time
 
@@ -265,39 +331,4 @@ sessioninfo::session_info()
 ```
 
 
-
-```{r}
-# down here, temporarily, I am just putting the assignments into the winter-assignments
-# appendix
-winter_assig$indiv_posteriors %>%
-  select(indiv, repunit, PofZ) %>%
-  pivot_wider(
-    names_from = repunit,
-    values_from = PofZ,
-    values_fill = list(n = 0L)
-  ) %>% 
-  select(
-    indiv,
-    PNW,
-    KER,
-    SCC,
-    INW,
-    SSW,
-    WMT,
-    EST
-  ) %>%
-  left_join(winter_meta, ., by = c("Field_Number" = "indiv")) %>%
-  select(
-    Field_Number:Collector.y,
-    PNW,
-    KER,
-    SCC,
-    INW,
-    SSW,
-    WMT,
-    EST,
-    everything()
-    ) %>%
-  write_csv("data/appendices/app1-winter-indivs-assignments-and-genos.csv")
-```
 
