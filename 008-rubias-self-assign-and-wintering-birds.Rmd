@@ -1,0 +1,303 @@
+---
+title: "Rubias self assignments and wintering birds"
+author: "Eric C. Anderson"
+date: "Last Updated: `r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+  html_notebook:
+    toc: true
+bibliography: references.bib
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+start_time <- Sys.time()
+```
+
+# Introduction
+
+We use the spatial groups determined in 006 as the reporting units
+(`repunits`) for genetic stock identification using rubias.
+
+```{r, message=FALSE}
+library(tidyverse)
+library(rubias)
+
+dir.create("outputs/008", recursive = TRUE, showWarnings = FALSE)
+```
+
+
+# Getting the data 
+
+## Get the meta data for the breeding birds
+
+```{r}
+breeding_meta <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv")
+```
+
+## Get the meta data for the wintering birds
+
+```{r}
+winter_meta <- read_csv("data/appendices/app1-winter-indivs-assignments-and-genos.csv")
+```
+
+## Data in rubias format for the wintering birds
+
+This was produced in 007.  We get it here:
+```{r}
+winter_rubias <- read_rds(file = "outputs/007/winter_rubias.rds")
+
+locus_names <- names(winter_rubias)[seq(5, ncol(winter_rubias), by = 2)]
+```
+
+## Data for the breeding sample reference populations
+
+First get the meta data for them and, most importantly the `repunit` of each.
+We drop the 12 birds from Bishop (BIS) in the
+reference because they are indeterminate and appear to a mixed population.
+See 006 for an expanded explanation of this.
+```{r}
+breeder_meta <- read_csv("data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv") %>%
+  select(Field_Number, repunit)  %>%
+  filter(repunit != "BIS")
+```
+
+Now, retrieve the genetic data from the output of 004.
+
+```{r}
+breeder_geno_long <- read_rds(
+  file = "outputs/004/rad_and_fluidigm_combined_568_breeders_at_179_snps.rds"
+) %>%
+  select(Field_Number, CHROMPOS, gene_copy, allele_ACGT)
+
+# filter it down to the 96 loci and pivot it wider an put it into rubias format
+breeder96_wide <- breeder_geno_long %>%
+  filter(CHROMPOS %in% locus_names) %>%
+  pivot_wider(
+    names_from = c(CHROMPOS, gene_copy),
+    names_sep = ".",
+    values_from = allele_ACGT
+  )
+
+fni <- seq(2, ncol(breeder96_wide), by = 2)
+
+names(breeder96_wide)[fni] <- str_replace(
+  names(breeder96_wide)[fni],
+  "\\.1$",
+  ""
+) 
+
+```
+
+And join the genos onto the meta data and add the columns needed to
+put it in rubias format.
+```{r}
+breeder_rubias <- breeder_meta %>%
+  left_join(breeder96_wide, by = "Field_Number") %>%
+  rename(indiv = Field_Number) %>%
+  mutate(
+    sample_type = "reference",
+    collection = repunit
+  ) %>%
+  select(sample_type, repunit, collection, indiv, everything())
+
+# finally, get the columns in the same order as winter_rubias
+breeder_rubias <- breeder_rubias[, names(winter_rubias)]
+```
+
+
+## Also, get the reference birds at the full 179 loci
+
+```{r}
+breeder179_wide <- breeder_geno_long %>%
+  pivot_wider(
+    names_from = c(CHROMPOS, gene_copy),
+    names_sep = ".",
+    values_from = allele_ACGT
+  )
+
+fni <- seq(2, ncol(breeder179_wide), by = 2)
+
+names(breeder179_wide)[fni] <- str_replace(
+  names(breeder179_wide)[fni],
+  "\\.1$",
+  ""
+) 
+
+breeder179_rubias <- breeder_meta %>%
+  left_join(breeder179_wide, by = "Field_Number") %>%
+  rename(indiv = Field_Number) %>%
+  mutate(
+    sample_type = "reference",
+    collection = repunit
+  ) %>%
+  select(sample_type, repunit, collection, indiv, everything())
+```
+
+# Leave-one-out cross validation
+
+## With the full 179 loci
+
+First, look at how we might have done with the full 179 markers:
+```{r}
+breed179_sa <- self_assign(breeder179_rubias, 5, alle_freq_prior = list(const = 0.5))
+```
+
+Make a table:
+```{r, rows.print = 40}
+breeding_meta %>%
+  select(`final-map-label`, Field_Number) %>%
+  left_join(breed179_sa, ., by = c("indiv" = "Field_Number")) %>%
+  group_by(`final-map-label`, indiv) %>%
+  slice(1) %>%
+  ungroup() %>%
+  count(`final-map-label`, inferred_repunit) %>%
+  pivot_wider(
+    names_from = inferred_repunit,
+    values_from = n,
+    values_fill = list(n = 0L)
+  ) %>% 
+  select(
+    `final-map-label`,
+    PNW,
+    KER,
+    SCC,
+    INW,
+    SSW,
+    WMT,
+    EST
+  )
+```
+
+## The same with the 96 SNPs
+
+We want to assess how accurately we can assign individuals to their
+genoscape repunit of origin.
+
+```{r}
+breed_sa <- self_assign(breeder_rubias, 5)
+```
+
+
+
+Now, look at numbers of correct/incorrect assignment. For this we want to join the
+population number to each individual.
+```{r, rows.print = 40}
+
+breeding_meta %>%
+  select(`final-map-label`, Field_Number) %>%
+  left_join(breed_sa, ., by = c("indiv" = "Field_Number")) %>%
+  group_by(`final-map-label`, indiv) %>%
+  slice(1) %>%
+  ungroup() %>%
+  count(`final-map-label`, inferred_repunit) %>%
+  pivot_wider(
+    names_from = inferred_repunit,
+    values_from = n,
+    values_fill = list(n = 0L)
+  ) %>% 
+  select(
+    `final-map-label`,
+    PNW,
+    KER,
+    SCC,
+    INW,
+    SSW,
+    WMT,
+    EST
+  )
+```
+That is the result that is in S1-Table 1.
+
+
+# Now assign the wintering birds
+
+```{r}
+set.seed(15)
+winter_assig <- infer_mixture(
+  reference = breeder_rubias,
+  mixture = winter_rubias,
+  gen_start_col = 5
+)
+
+# get the maximum a-posterior (MAP) assignments
+winter_MAP <- winter_assig$indiv_posteriors %>%
+  arrange(indiv, desc(PofZ)) %>%
+  group_by(indiv) %>%
+  slice(1)
+
+```
+
+Check that this is congruent with the appendix:
+```{r}
+winter_MAP %>%
+  left_join(
+    winter_meta %>% select(Field_Number, Assignment),
+    by = c("indiv" = "Field_Number")
+    ) %>% 
+  ungroup() %>%
+  count(repunit == Assignment)
+```
+As it is showing 363 TRUEs, that means that the assignments listed
+in appendix S1 are correct.
+
+
+# Running Time
+
+Running the code and rendering this notebook required approximately this much time
+on a Mac laptop of middling speed, listed in `HH:MM:SS`.
+```{r}
+td <- Sys.time() - start_time
+tdf <- hms::as_hms(ceiling(hms::as_hms(td)))
+dir.create("stored_run_times", showWarnings = FALSE, recursive = TRUE)
+write_rds(tdf, "stored_run_times/007.rds")
+tdf
+``` 
+
+# Session Info
+
+```{r}
+sessioninfo::session_info()
+```
+
+
+
+```{r}
+# down here, temporarily, I am just putting the assignments into the winter-assignments
+# appendix
+winter_assig$indiv_posteriors %>%
+  select(indiv, repunit, PofZ) %>%
+  pivot_wider(
+    names_from = repunit,
+    values_from = PofZ,
+    values_fill = list(n = 0L)
+  ) %>% 
+  select(
+    indiv,
+    PNW,
+    KER,
+    SCC,
+    INW,
+    SSW,
+    WMT,
+    EST
+  ) %>%
+  left_join(winter_meta, ., by = c("Field_Number" = "indiv")) %>%
+  select(
+    Field_Number:Collector.y,
+    PNW,
+    KER,
+    SCC,
+    INW,
+    SSW,
+    WMT,
+    EST,
+    everything()
+    ) %>%
+  write_csv("data/appendices/app1-winter-indivs-assignments-and-genos.csv")
+```
+
