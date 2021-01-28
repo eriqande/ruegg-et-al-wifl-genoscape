@@ -48,8 +48,8 @@ BiocManager::install("SNPRelate")
 
 
 # Install Eric's Packages from GitHub
-# UPDATE UPON FINAL RELEASE WITH THE ACTUAL COMMIT USED
-remotes::install_github("eriqande/genoscapeRtools")
-remotes::install_github("eriqande/snps2assays")
-remotes::install_github("eriqande/whoa")
-remotes::install_github("eriqande/TESS3_encho_sen")  # for special version of tess3r
+# These include the specific commit (ref) used
+remotes::install_github("eriqande/genoscapeRtools", ref = "3e1dbfc0")
+remotes::install_github("eriqande/snps2assays", ref = "8666f066")
+remotes::install_github("eriqande/whoa", ref = "dddbeead")
+remotes::install_github("eriqande/TESS3_encho_sen", ref = "2a0ce6c6")  # for special version of tess3r

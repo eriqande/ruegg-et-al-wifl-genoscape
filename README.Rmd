@@ -310,6 +310,13 @@ Process the wintering birds typed at the 96 Fluidigm assays chosen for wintering
 bird assignment.
 
 
+## `r make_link("008-rubias-self-assign-and-wintering-birds.Rmd")`
+
+Self-assignment (leave-one-out cross-validation) of the reference (breeding)
+birds, and mixture analysis of the wintering birds.
+
+
+
 
 # Literature Cited
 

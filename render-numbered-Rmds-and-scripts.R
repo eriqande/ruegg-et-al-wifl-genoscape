@@ -4,7 +4,11 @@ files <- c(
   "001-rad-seq-data-summaries-and-pca.Rmd",
   "002-select-snps-for-assays-from-rad.Rmd",
   "003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd",
-  "004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd"
+  "004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd",
+  "005-choosing-96-SNPs-from-amongst-the-179.Rmd",
+  "006-make-the-genoscape.Rmd",
+  "007-process-fluidigm-plates-for-wintering-birds.Rmd",
+  "008-rubias-self-assign-and-wintering-birds.Rmd"
 )
 
 for(f in files) {
