@@ -31,9 +31,16 @@ Dbase <- "./"
 # GitHub README or are making an index.html for the docs directory
 hdir <- GPbase
 
-make_link <- function(Rmd, base = hdir) {
-  nb <- stringr::str_replace(Rmd, "Rmd$", "html")
-  sprintf("%s\n\n(_Compiled RMarkdown HTML document on GitHub Pages:_ [%s](%s%s))\n\n", Rmd, nb, base, nb)
+GH_base <- "https://github.com/eriqande/ruegg-et-al-wifl-genoscape"
+
+make_link <- function(Rmd, base = hdir, gh_base = GH_base) {
+  if(stringr::str_detect(Rmd, "Rmd$")) {
+    nb <- stringr::str_replace(Rmd, "Rmd$", "html")
+    ret <- sprintf("%s\n\n(_Compiled RMarkdown HTML document on GitHub Pages:_ [%s](%s%s))\n\n", Rmd, nb, base, nb)
+  } else if(stringr::str_detect(Rmd, "R$")) {
+    ret<- sprintf("%s\n\n(_Source code of the R script viewable on Github at:_ [%s](%s/blob/master/%s))\n\n", Rmd, Rmd, gh_base, Rmd) 
+  }
+  ret
 }
 ```
 
@@ -218,7 +225,7 @@ mv wc2.1_2.5m_tavg/* wc2.1_2.5m_prec/* ./
 rmdir wc2.1_2.5m_tavg wc2.1_2.5m_prec
 cd ../
 ```
-Nite, when done with this, the listing of the `Climate-data` directory
+Note, when done with this, the listing of the `Climate-data` directory
 looks like:
 ```sh
 # ls Climate-data/*
@@ -232,12 +239,6 @@ Climate-data/wc2.1_2.5m_prec_06.tif  Climate-data/wc2.1_2.5m_tavg_03.tif  Climat
 Climate-data/wc2.1_2.5m_prec_07.tif  Climate-data/wc2.1_2.5m_tavg_04.tif
 Climate-data/wc2.1_2.5m_prec_08.tif  Climate-data/wc2.1_2.5m_tavg_05.tif
 ```
-
-## Java jars
-
-The following Java-based programs must be downloaded, and the paths to their
-associated Jar files must be listed appropriately in the file `script/java-jar-paths.R`.
-(NO JAVA JARS NEEDED AT THIS TIME...)
 
 
 ## R Packages
@@ -315,7 +316,9 @@ bird assignment.
 Self-assignment (leave-one-out cross-validation) of the reference (breeding)
 birds, and mixture analysis of the wintering birds.
 
+## `r make_link("101-niche_tracking_analysis.R")`
 
+R script that does the entire niche-tracking analysis.
 
 
 # Literature Cited
