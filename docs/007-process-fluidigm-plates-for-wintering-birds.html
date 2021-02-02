@@ -1645,7 +1645,7 @@ summary {
 
 <h1 class="title toc-ignore">Process Fluidigm Panel 3</h1>
 <h4 class="author">Eric C. Anderson</h4>
-<h4 class="date">Last Updated: 2021-01-26</h4>
+<h4 class="date">Last Updated: 2021-01-27</h4>
 
 </div>
 
@@ -1665,7 +1665,6 @@ summary {
 <li><a href="#write-out-a-data-frame-suitable-for-use-in-rubias">Write out a data frame suitable for use in rubias</a></li>
 <li><a href="#running-time">Running Time</a></li>
 <li><a href="#session-info">Session Info</a></li>
-<li><a href="#literature-cited">Literature Cited</a></li>
 </ul>
 </div>
 
@@ -1899,8 +1898,11 @@ compare_to_appendix &lt;- tmp %&gt;%
 # what we are distributing in the appendix
 
 
-# now, make a rubias compliant tibble
+# now, make a rubias compliant tibble.  It turns out that we have
+# to arrange by gene-copy on to get the .1 and .2 columns in the
+# correct order.  Who knew...
 winter_wide &lt;- tmp %&gt;%
+  arrange(Field_Number, CHROMPOS, gene_copy) %&gt;%
   pivot_wider(
     names_from = c(CHROMPOS, gene_copy),
     names_sep = &quot;.&quot;,
@@ -1944,7 +1946,7 @@ tdf &lt;- hms::as_hms(ceiling(hms::as_hms(td)))
 dir.create(&quot;stored_run_times&quot;, showWarnings = FALSE, recursive = TRUE)
 write_rds(tdf, &quot;stored_run_times/003.rds&quot;)
 tdf</code></pre>
-<pre><code>## 00:00:15</code></pre>
+<pre><code>## 00:00:08</code></pre>
 </div>
 <div id="session-info" class="section level1">
 <h1>Session Info</h1>
@@ -1959,7 +1961,7 @@ tdf</code></pre>
 ##  collate  en_US.UTF-8                 
 ##  ctype    en_US.UTF-8                 
 ##  tz       America/Denver              
-##  date     2021-01-26                  
+##  date     2021-01-27                  
 ## 
 ## ─ Packages ───────────────────────────────────────────────────────────────────
 ##  package     * version date       lib source        
@@ -2024,9 +2026,6 @@ tdf</code></pre>
 ## 
 ## [1] /Users/eriq/Library/R/4.0/library
 ## [2] /Library/Frameworks/R.framework/Versions/4.0/Resources/library</code></pre>
-</div>
-<div id="literature-cited" class="section level1">
-<h1>Literature Cited</h1>
 </div>
 
 

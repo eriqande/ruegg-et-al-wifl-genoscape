@@ -1645,7 +1645,7 @@ summary {
 
 <h1 class="title toc-ignore">Choosing 96 SNPs from amongst the 179 SNPs</h1>
 <h4 class="author">Eric C. Anderson</h4>
-<h4 class="date">Last Updated: 2021-01-17</h4>
+<h4 class="date">Last Updated: 2021-01-27</h4>
 
 </div>
 
@@ -1664,8 +1664,8 @@ summary {
 </ul>
 </div>
 
-<div id="introduction" class="section level2">
-<h2>Introduction</h2>
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
 <p>In the notebook <code>003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd</code>, we processed the chips into two column format, tossed out some hard-to-score loci, ending up with 179 SNPs. In <code>004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd</code> we retrieved the genotypes of the 175 RAD-genotyped individuals and combined them with the 393 Fluidigm-typed individuals and ran all of these 568 breeding birds through <em>structure</em> with the 179 SNPs.</p>
 <p>From those results, it looked like there was very little variation in the <em>structure</em> output across multiple runs for the model with <span class="math inline">\(K=5\)</span>, and the clusters found there reflected geography, consistently.</p>
 <p>Now it is time to whittle those 179 loci down to a panel of 96 that we will be using to genotype the wintering birds. The way we will do this is by using the SNP allele frequencies estimated in the <span class="math inline">\(K=5\)</span> run (we use the first <span class="math inline">\(K=5\)</span> run, but they all came out the same, so it should make no difference) to guide us. I have committed with the repository the output file from that run that includes the allele frequencies at the different loci. That file is at <code>./stored_results/004/StructOuput_genos_slg_pipe.txt_dat001_k005_Rep001.txt_f</code>.</p>
@@ -1693,18 +1693,18 @@ E_j = P_{00,j}Q_{00,j} + P_{01,j}Q_{01,j} + P_{11,j}Q_{11,j}.
 <li>then cycle over the 5 clusters, and, each time, include in the “retained loci” list the highest-ranked locus for that cluster that has not yet been put on the “retained list”. Do this until there are 96 SNPs on the “retained list.”</li>
 </ol>
 </div>
-<div id="functions" class="section level2">
-<h2>Functions</h2>
+<div id="functions" class="section level1">
+<h1>Functions</h1>
 <p>In order to do this easily, we write a function that takes a vector of allele frequencies from biallelic loci in <span class="math inline">\(K\)</span> different clusters/populations, and returns a vector of <span class="math inline">\(E_j\)</span> values.</p>
 <p>This function is called <code>Ej_from_freqs</code> in <code>./R/wifl-popgen-funcs.R</code>. So, we need to source that in here:</p>
 <pre class="r"><code>library(tidyverse)
 source(&quot;R/Ej_from_freqs.R&quot;)
 dir.create(&quot;outputs/005&quot;, showWarnings = FALSE, recursive = TRUE)</code></pre>
 </div>
-<div id="doing-the-selection" class="section level2">
-<h2>Doing the selection</h2>
-<div id="reading-in-the-allele-frequencies" class="section level3">
-<h3>Reading in the allele frequencies</h3>
+<div id="doing-the-selection" class="section level1">
+<h1>Doing the selection</h1>
+<div id="reading-in-the-allele-frequencies" class="section level2">
+<h2>Reading in the allele frequencies</h2>
 <p>We need to parse the <em>structure</em> output file. This can be done with R, but it is way easier with <code>awk</code>.</p>
 <p>First We put them into an easily readable form in a temp file called <code>xxx_tmp_freqs.txt</code>.</p>
 <pre class="sh"><code>rm -f xxx_tmp_freqs.txt
@@ -1719,8 +1719,8 @@ awk &#39;
 <pre class="r"><code>sfreqs &lt;- read_delim(&quot;outputs/005/tmp_struct_freqs.txt&quot;, delim = &quot;\t&quot;, col_names = FALSE)
 names(sfreqs) &lt;- c(&quot;struct_name&quot;, paste(&quot;clust_&quot;, 1:5, sep = &quot;&quot;))</code></pre>
 </div>
-<div id="getting-the-full-locus-names" class="section level3">
-<h3>Getting the full locus names</h3>
+<div id="getting-the-full-locus-names" class="section level2">
+<h2>Getting the full locus names</h2>
 <p>There is one silly wrinkle here: <em>structure</em> truncates the locus names. Jeez!! Fortunately, we have them in the slg_pipe output. The respository has a copy of them in a text file at <code>inputs/004/slg-pipe-locus-order.rds</code>. We read that in and then fill out the locus names.</p>
 <p>Anyhow, it is just a quick slap of the locus names on there.</p>
 <pre class="r"><code>fullloc &lt;- read_rds(file = &quot;inputs/004/slg-pipe-locus-order.rds&quot;)
@@ -1736,8 +1736,8 @@ sfreqs2</code></pre>
   </script>
 </div>
 </div>
-<div id="choosing-the-top-96-loci" class="section level3">
-<h3>Choosing the top 96 loci</h3>
+<div id="choosing-the-top-96-loci" class="section level2">
+<h2>Choosing the top 96 loci</h2>
 <p>This is a matter of sorting by rank and cluster and then taking unduplicated ones until we have 96</p>
 <pre class="r"><code>stidy &lt;- sfreqs2 %&gt;%
   tidyr::gather(data = ., key = &quot;cluster&quot;, value = &quot;freq&quot;, clust_1:clust_5)
@@ -1768,8 +1768,8 @@ picks &lt;- stidy %&gt;%
 write_csv(top96, file = &quot;outputs/005/top96_loci.csv&quot;)</code></pre>
 </div>
 </div>
-<div id="looking-at-our-choices" class="section level2">
-<h2>Looking at our choices</h2>
+<div id="looking-at-our-choices" class="section level1">
+<h1>Looking at our choices</h1>
 <p>Just going to make a quick histogram of the <span class="math inline">\(E_j\)</span> values that got specifically chosen for the different clusters.</p>
 <pre class="r"><code>ggplot(picks, aes(x = Ej, fill = include)) +
   geom_histogram(bins = 30) +
@@ -1809,7 +1809,7 @@ tdf</code></pre>
 ##  collate  en_US.UTF-8                 
 ##  ctype    en_US.UTF-8                 
 ##  tz       America/Denver              
-##  date     2021-01-17                  
+##  date     2021-01-27                  
 ## 
 ## ─ Packages ───────────────────────────────────────────────────────────────────
 ##  package     * version date       lib source        

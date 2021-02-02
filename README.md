@@ -9,16 +9,21 @@ Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith
       - [Genomic resources](#genomic-resources)
       - [Geospatial data](#geospatial-data)
       - [Climate Data](#climate-data)
-          - [Here is Eric’s attempt on
-            it:](#here-is-erics-attempt-on-it)
-      - [Java jars](#java-jars)
       - [R Packages](#r-packages)
-  - [RMarkdown Documents](#rmarkdown-documents)
+  - [RMarkdown Documents and R
+    Scripts](#rmarkdown-documents-and-r-scripts)
       - [001-rad-seq-data-summaries-and-pca.Rmd](#rad-seq-data-summaries-and-pca.rmd)
       - [002-select-snps-for-assays-from-rad.Rmd](#select-snps-for-assays-from-rad.rmd)
+      - [003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd](#process-5-plates-of-birds-at-192-fluidigm-snps.rmd)
+      - [004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd](#combine-rad-and-fludigm-breeders-and-run-structure.rmd)
+      - [005-choosing-96-SNPs-from-amongst-the-179.Rmd](#choosing-96-snps-from-amongst-the-179.rmd)
+      - [006-make-the-genoscape.Rmd](#make-the-genoscape.rmd)
+      - [007-process-fluidigm-plates-for-wintering-birds.Rmd](#process-fluidigm-plates-for-wintering-birds.rmd)
+      - [008-rubias-self-assign-and-wintering-birds.Rmd](#rubias-self-assign-and-wintering-birds.rmd)
+      - [101-niche\_tracking\_analysis.R](#niche_tracking_analysis.r)
   - [Literature Cited](#literature-cited)
 
-**Last Updated:** 2020-09-28
+**Last Updated:** 2021-02-02
 
 # Overview
 
@@ -55,11 +60,17 @@ All the RMarkdown documents or scripts can be evaluated en masse by
 sourcing the R script `render-numbered-Rmds-and-scripts.R`. On a fairly
 old mac laptop the run times for each are as follows:
 
-    ## # A tibble: 2 x 2
-    ##   File                                    `Running time in HH:MM:SS`
-    ##   <chr>                                   <chr>                     
-    ## 1 001-rad-seq-data-summaries-and-pca.Rmd  00:00:44                  
-    ## 2 002-select-snps-for-assays-from-rad.Rmd 00:00:34
+    ## # A tibble: 8 x 2
+    ##   File                                                  `Running time in HH:MM:…
+    ##   <chr>                                                 <chr>                   
+    ## 1 001-rad-seq-data-summaries-and-pca.Rmd                00:00:45                
+    ## 2 002-select-snps-for-assays-from-rad.Rmd               00:00:34                
+    ## 3 003-process-5-plates-of-birds-at-192-fluidigm-snps.R… 00:00:08                
+    ## 4 004-combine-RAD-and-fludigm-breeders-and-run-STRUCTU… 00:00:08                
+    ## 5 005-choosing-96-SNPs-from-amongst-the-179.Rmd         00:00:04                
+    ## 6 006-make-the-genoscape.Rmd                            00:02:41                
+    ## 7 007-process-fluidigm-plates-for-wintering-birds.Rmd   00:00:10                
+    ## 8 008-rubias-self-assign-and-wintering-birds.Rmd        00:00:10
 
 # Preliminaries and Dependencies
 
@@ -115,35 +126,76 @@ samtools faidx wifl-genome.fna
 Make a directory in the top level of the repository called `geo-spatial`
 and then download some large files from Natural Earth Data to there:
 
-  - Natural Earth II with Shaded Relief, Water, and Drainages raster
-    <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/NE2_HR_LC_SR_W_DR.zip>.
-    Put or symlink the resulting directory, `NE2_HR_LC_SR_W_DR` into
+  - We the hypsometrically tinted Natural Earth map with water bodies
+    and rivers on it, and you might as well get the one that has some
+    ocean basin coloring too. Natural Earth II with Shaded Relief,
+    Water, and Drainages raster
+    <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/HYP_HR_SR_OB_DR.zip>.
+    Put or symlink the resulting directory, `HYP_HR_SR_OB_DR` into
     `geo-spatial`.
   - 10m-cultural-vectors, Admin 1 – States, Provinces, Download boundary
     lines:
     <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip>.
-    Put or symlink the resulting directory,
-    `ne_10m_admin_1_states_provinces_lines` into `geo-spatial`.
+    Put the resulting directory, `ne_10m_admin_1_states_provinces_lines`
+    into `geo-spatial`.
   - Finally, get the coastlines:
     <https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip>,
     and put the resulting folder, `ne_10m_coastline` into `geo-spatial`.
 
+Here is some R-code that would make that all happen:
+
+``` r
+dir.create("geo-spatial", showWarnings = FALSE)
+
+# Natural Earth Data rasters
+tmpfile <- tempfile()
+downloader::download(
+  url = "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/raster/HYP_HR_SR_OB_DR.zip",
+  dest = tmpfile
+)
+unzip(zipfile = tmpfile, exdir = "geo-spatial/HYP_HR_SR_OB_DR")
+
+
+# coastlines
+tmpfile <- tempfile()
+downloader::download(
+  url = "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/physical/ne_10m_coastline.zip",
+  dest = tmpfile
+)
+unzip(zipfile = tmpfile, exdir = "geo-spatial/ne_10m_coastline")
+
+
+# country boundaries
+tmpfile <- tempfile()
+downloader::download(
+  url = "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_0_boundary_lines_land.zip",
+  dest = tmpfile
+)
+unzip(zipfile = tmpfile, exdir = "geo-spatial/ne_10m_admin_0_boundary_lines_land")
+
+
+# state and province boundaries
+# country boundaries
+tmpfile <- tempfile()
+downloader::download(
+  url = "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip",
+  dest = tmpfile
+)
+unzip(zipfile = tmpfile, exdir = "geo-spatial/ne_10m_admin_1_states_provinces_lines")
+```
+
 ## Climate Data
-
-Make a directory in the top level of the repository called
-`Climate-data` with sub-directories `Temperature` and `Precipitation`.
-Download average temperature and precipitation at 2.5 minutes resolution
-from WorldClim at <https://worldclim.org/data/worldclim21.html>, and put
-the data into the corresponding sub-directories.
-
-### Here is Eric’s attempt on it:
 
 Make a directory in the top level of the repository called
 `Climate-data`. Change into that directory and download the average
 temperature and precipitation at 2.5 minutes resolution from WorldClim
 <https://worldclim.org/data/worldclim21.html>. Unzip the downloads
-within `Climate-data` leaving you with the directories `wc2.1_2.5m_tavg`
-and
+within `Climate-data`. Depending on the method used to unzip things,
+this might leave you with the directories `wc2.1_2.5m_tavg` and
+`wc2.1_2.5m_prec`. Or it might not. The important thing is that you want
+all the actual tif files to be placed immediately within the
+`Climate-data` directory. So, you might have to move all of those files
+out of `wc2.1_2.5m_tavg` and `wc2.1_2.5m_prec`.
 
 ``` sh
 mkdir Climate-data
@@ -154,14 +206,26 @@ unzip wc2.1_2.5m_tavg.zip
 unzip wc2.1_2.5m_prec.zip
 rm -f wc2.1_2.5m_tavg.zip
 rm -f wc2.1_2.5m_prec.zip
+mv wc2.1_2.5m_tavg/* wc2.1_2.5m_prec/* ./
+rmdir wc2.1_2.5m_tavg wc2.1_2.5m_prec
 cd ../
 ```
 
-## Java jars
+Note, when done with this, the listing of the `Climate-data` directory
+looks like:
 
-The following Java-based programs must be downloaded, and the paths to
-their associated Jar files must be listed appropriately in the file
-`script/java-jar-paths.R`. (NO JAVA JARS NEEDED AT THIS TIME…)
+``` sh
+# ls Climate-data/*
+Climate-data/readme.txt*             Climate-data/wc2.1_2.5m_prec_09.tif  Climate-data/wc2.1_2.5m_tavg_06.tif
+Climate-data/wc2.1_2.5m_prec_01.tif  Climate-data/wc2.1_2.5m_prec_10.tif  Climate-data/wc2.1_2.5m_tavg_07.tif
+Climate-data/wc2.1_2.5m_prec_02.tif  Climate-data/wc2.1_2.5m_prec_11.tif  Climate-data/wc2.1_2.5m_tavg_08.tif
+Climate-data/wc2.1_2.5m_prec_03.tif  Climate-data/wc2.1_2.5m_prec_12.tif  Climate-data/wc2.1_2.5m_tavg_09.tif
+Climate-data/wc2.1_2.5m_prec_04.tif  Climate-data/wc2.1_2.5m_tavg_01.tif  Climate-data/wc2.1_2.5m_tavg_10.tif
+Climate-data/wc2.1_2.5m_prec_05.tif  Climate-data/wc2.1_2.5m_tavg_02.tif  Climate-data/wc2.1_2.5m_tavg_11.tif
+Climate-data/wc2.1_2.5m_prec_06.tif  Climate-data/wc2.1_2.5m_tavg_03.tif  Climate-data/wc2.1_2.5m_tavg_12.tif
+Climate-data/wc2.1_2.5m_prec_07.tif  Climate-data/wc2.1_2.5m_tavg_04.tif
+Climate-data/wc2.1_2.5m_prec_08.tif  Climate-data/wc2.1_2.5m_tavg_05.tif
+```
 
 ## R Packages
 
@@ -178,11 +242,13 @@ install.packages(
     "ade4",
     "car",
     "dggridR",
+    "downloader",
     "ebirdst",
     "ecospat",
     "emdist",
     "fields",
     "geosphere",
+    "ggspatial",
     "gridExtra",
     "hms",
     "igraph",
@@ -218,32 +284,27 @@ BiocManager::install("SNPRelate")
 
 
 # Install Eric's Packages from GitHub
-# UPDATE UPON FINAL RELEASE WITH THE ACTUAL COMMIT USED
-remotes::install_github("eriqande/genoscapeRtools")
-remotes::install_github("eriqande/snps2assays")
-remotes::install_github("eriqande/whoa")
+# These include the specific commit (ref) used
+remotes::install_github("eriqande/genoscapeRtools", ref = "3e1dbfc0")
+remotes::install_github("eriqande/snps2assays", ref = "8666f066")
+remotes::install_github("eriqande/whoa", ref = "dddbeead")
+remotes::install_github("eriqande/TESS3_encho_sen", ref = "2a0ce6c6")  # for special version of tess3r
 ```
 
-# RMarkdown Documents
+# RMarkdown Documents and R Scripts
 
 The following RMarkdown documents should be evaluated in order. The
 script `render-numbered-Rmds-and-scripts.R` will do that when run in the
-top level of this repository. Some RMarkdown documents rely on outputs
-from previous ones. Some of these RMarkdown documents include calls to
-Unix utilities, so might not run on non-Unix or non-Linux architectures.
+top level of this repository. Some RMarkdown documents and R scripts
+rely on outputs from previous ones. Some of these RMarkdown documents
+include calls to Unix utilities, so might not run on non-Unix or
+non-Linux architectures.
 
 Outputs (figures, tables, R data objects, etc) from each RMarkdown
-document are written to the `outputs/XXX` directories. Intermediate
-files written during evaluation of each RMarkdown document are written
-to the `intermediates/XXX` directories (THOUGH I MIGHT NOT USE
-intermediates AT ALL). To facilitate working between the cluster and a
-desktop/laptop, some outputs are written to the `stored_results/XXX`
-directories which are version controlled and included in this repo.
-
-Thumbnails of the figures and tables generated by each RMarkdown
-document appear below (NOT YET). Additionally, at the top of each
-section is a link to the compiled (HTML-version) of the RMarkdown
-document on GitHub Pages.
+document are written to the `outputs/XXX` directories.  
+To facilitate working between the cluster and a desktop/laptop, some
+outputs are written to the `stored_results/XXX` directories which are
+version controlled and included in this repo.
 
 ## 001-rad-seq-data-summaries-and-pca.Rmd
 
@@ -259,9 +320,72 @@ monomorphic sites, then producing a PCA plot and estimates of pairwise
 (*Compiled RMarkdown HTML document on GitHub Pages:*
 [002-select-snps-for-assays-from-rad.html](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/002-select-snps-for-assays-from-rad.html))
 
-All the steps we went through to rank SNPs for ability to resolve
-different populations/subspecies, and then the workflow for designing
-Fluidigm assays from them.
+All the steps we went through to rank the RAD-genotyped SNPs for ability
+to resolve different populations/subspecies, and then the workflow for
+designing Fluidigm assays from them.
+
+## 003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd
+
+(*Compiled RMarkdown HTML document on GitHub Pages:*
+[003-process-5-plates-of-birds-at-192-fluidigm-snps.html](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/003-process-5-plates-of-birds-at-192-fluidigm-snps.html))
+
+Workflow for processing 5 plates of breeding birds typed on two plates
+of Fluidigm assays. Filtering out the SNPs with high missing rate.
+Naming alleles in various ways for downstream workflows, attaching
+additional meta data for birds and markers.
+
+## 004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd
+
+(*Compiled RMarkdown HTML document on GitHub Pages:*
+[004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.html](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.html))
+
+Take the 012 file of RAD data from Ruegg et al. (2018) and reconstitute
+the actual alleles (bases) at those sites so as to make the data
+commensurate with the newly typed Fluidigm assays from 003. Then combine
+the Fluidigm and RAD data to run all the breeding birds through
+STRUCTURE.
+
+## 005-choosing-96-SNPs-from-amongst-the-179.Rmd
+
+(*Compiled RMarkdown HTML document on GitHub Pages:*
+[005-choosing-96-SNPs-from-amongst-the-179.html](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/005-choosing-96-SNPs-from-amongst-the-179.html))
+
+Whittle the 179 Fluidigm assays down to a panel of 96 with which to type
+the wintering birds and assign them to different regions/clusters.
+
+## 006-make-the-genoscape.Rmd
+
+(*Compiled RMarkdown HTML document on GitHub Pages:*
+[006-make-the-genoscape.html](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/006-make-the-genoscape.html))
+
+From the Q-values resulting from running STRUCTURE on the 179 Fluidigm
+assays typed upon breeding birds of known geographic location (and the
+genotypes of the RAD-sequenced birds at the same genomic sites), create
+the “genoscape” for WIFL, and then show how to make a pretty map out of
+it.
+
+## 007-process-fluidigm-plates-for-wintering-birds.Rmd
+
+(*Compiled RMarkdown HTML document on GitHub Pages:*
+[007-process-fluidigm-plates-for-wintering-birds.html](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/007-process-fluidigm-plates-for-wintering-birds.html))
+
+Process the wintering birds typed at the 96 Fluidigm assays chosen for
+wintering bird assignment.
+
+## 008-rubias-self-assign-and-wintering-birds.Rmd
+
+(*Compiled RMarkdown HTML document on GitHub Pages:*
+[008-rubias-self-assign-and-wintering-birds.html](https://eriqande.github.io/ruegg-et-al-wifl-genoscape/008-rubias-self-assign-and-wintering-birds.html))
+
+Self-assignment (leave-one-out cross-validation) of the reference
+(breeding) birds, and mixture analysis of the wintering birds.
+
+## 101-niche\_tracking\_analysis.R
+
+(*Source code of the R script viewable on Github at:*
+[101-niche\_tracking\_analysis.R](https://github.com/eriqande/ruegg-et-al-wifl-genoscape/blob/master/101-niche_tracking_analysis.R))
+
+R script that does the entire niche-tracking analysis.
 
 # Literature Cited
 
