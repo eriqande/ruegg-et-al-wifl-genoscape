@@ -320,6 +320,20 @@ birds, and mixture analysis of the wintering birds.
 
 R script that does the entire niche-tracking analysis.
 
+# Snakemake
+
+For those of a snakemake persuasion, there is a Snakefile included in this that
+will let you evaluate all the numbered RMarkdown documents and numbered R scripts
+with a simple:
+```sh
+snakemake --cores 8
+```
+assuming you have 8 cores to play with.
+
+The input and output file dependencies between those numbered RMarkdown docs and
+R scripts is shown here (from `snakemake --filegraph  | dot -Tsvg > filegraph.svg`)
+
+![](filegraph.svg)
 
 # Literature Cited
 
