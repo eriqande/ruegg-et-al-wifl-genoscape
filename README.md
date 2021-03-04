@@ -21,9 +21,10 @@ Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith
       - [007-process-fluidigm-plates-for-wintering-birds.Rmd](#process-fluidigm-plates-for-wintering-birds.rmd)
       - [008-rubias-self-assign-and-wintering-birds.Rmd](#rubias-self-assign-and-wintering-birds.rmd)
       - [101-niche\_tracking\_analysis.R](#niche_tracking_analysis.r)
+  - [Snakemake](#snakemake)
   - [Literature Cited](#literature-cited)
 
-**Last Updated:** 2021-02-02
+**Last Updated:** 2021-03-04
 
 # Overview
 
@@ -63,14 +64,14 @@ old mac laptop the run times for each are as follows:
     ## # A tibble: 8 x 2
     ##   File                                                  `Running time in HH:MM:…
     ##   <chr>                                                 <chr>                   
-    ## 1 001-rad-seq-data-summaries-and-pca.Rmd                00:00:45                
-    ## 2 002-select-snps-for-assays-from-rad.Rmd               00:00:34                
-    ## 3 003-process-5-plates-of-birds-at-192-fluidigm-snps.R… 00:00:08                
-    ## 4 004-combine-RAD-and-fludigm-breeders-and-run-STRUCTU… 00:00:08                
-    ## 5 005-choosing-96-SNPs-from-amongst-the-179.Rmd         00:00:04                
-    ## 6 006-make-the-genoscape.Rmd                            00:02:41                
+    ## 1 001-rad-seq-data-summaries-and-pca.Rmd                00:00:59                
+    ## 2 002-select-snps-for-assays-from-rad.Rmd               00:00:45                
+    ## 3 003-process-5-plates-of-birds-at-192-fluidigm-snps.R… 00:00:10                
+    ## 4 004-combine-RAD-and-fludigm-breeders-and-run-STRUCTU… 00:00:12                
+    ## 5 005-choosing-96-SNPs-from-amongst-the-179.Rmd         00:00:05                
+    ## 6 006-make-the-genoscape.Rmd                            00:02:55                
     ## 7 007-process-fluidigm-plates-for-wintering-birds.Rmd   00:00:10                
-    ## 8 008-rubias-self-assign-and-wintering-birds.Rmd        00:00:10
+    ## 8 008-rubias-self-assign-and-wintering-birds.Rmd        00:00:14
 
 # Preliminaries and Dependencies
 
@@ -386,6 +387,24 @@ Self-assignment (leave-one-out cross-validation) of the reference
 [101-niche\_tracking\_analysis.R](https://github.com/eriqande/ruegg-et-al-wifl-genoscape/blob/master/101-niche_tracking_analysis.R))
 
 R script that does the entire niche-tracking analysis.
+
+# Snakemake
+
+For those of a snakemake persuasion, there is a Snakefile included in
+this that will let you evaluate all the numbered RMarkdown documents and
+numbered R scripts with a simple:
+
+``` sh
+snakemake --cores 8
+```
+
+assuming you have 8 cores to play with.
+
+The input and output file dependencies between those numbered RMarkdown
+docs and R scripts is shown here (from `snakemake --filegraph | dot
+-Tsvg > filegraph.svg`)
+
+![](filegraph.svg)
 
 # Literature Cited
 

@@ -2,13 +2,13 @@
 title: "Ruegg et. al., WIFL Genoscape, Data and Code Repository"
 author: "Kristen Ruegg, Eric C. Anderson, Marius Somvielle, Rachael A. Bay, Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith"
 output:
+  github_document:
+    toc: true
+    toc_depth: 3
   html_document:
     toc: true
     toc_depth: 3
     df_print: paged
-  github_document:
-    toc: true
-    toc_depth: 3
 bibliography: references.bib
 ---
 
