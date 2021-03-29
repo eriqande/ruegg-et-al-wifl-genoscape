@@ -69,6 +69,14 @@ Temp.raster.summer <- calc(Temp_stack[[6:8]], fun = mean)
 Prec.raster.winter <- calc(Prec_stack[[c(11:12,1:4)]], fun = mean)
 Prec.raster.summer <- calc(Prec_stack[[6:8]], fun = mean)
 
+z = stack(Bio_stack, Temp.raster.winter, Temp.raster.summer, Prec.raster.winter, Prec.raster.summer)
+Temp.raster.winter <- calc(z, fun = function(x) cor(x[2], x[20], method='pearson'))
+
+cor(getValues(Temp.raster.winter), getValues(Bio_stack[[17]]), use="pairwise.complete.obs", method="pearson")
+cor(getValues(Temp.raster.summer), getValues(Bio_stack[[17]]), use="pairwise.complete.obs", method="pearson")
+cor(getValues(Prec.raster.winter), getValues(Bio_stack[[17]]), use="pairwise.complete.obs", method="pearson")
+cor(getValues(Prec.raster.summer), getValues(Bio_stack[[17]]), use="pairwise.complete.obs", method="pearson")
+
 ##  Extract climate data onto the hexagon grid  ##
 
 Temp.hex.winter <- raster::extract(Temp.raster.winter, hexgrid3_stem, fun=mean, na.rm=T)
@@ -153,7 +161,7 @@ winteringHexagons <- unlist(winteringHexagons[toKeep]) # hexagon occupied by win
 winteringHexagons2 <- unique(winteringHexagons)
 popNB <- as.character(wintering.assignments$Assignment)
 popNB <- popNB[toKeep] # population assignment of wintering individuals
-
+ptsNB <- ptsNB[toKeep,]
 
 ##   Estimating seasonal climatic niches  ##
 
@@ -369,11 +377,12 @@ tibbleVar.points <- lapply(bigList.points, function(x){
 
 ##  Plot niches  ##
 
-pdf("outputs/101/Figure_nicheTracking.pdf", width=6, height=10)
+pdf("outputs/101/Figure_nicheTracking3.pdf", width=6, height=10)
 theme_set(theme_light())
 ggplot(tibbleVar.niche, aes(x = x, y = y)) +
   geom_raster(aes(fill = forColor)) +
   scale_x_continuous(limits = c(-0.8, 1.8)) +
+  scale_y_continuous(position = "right", limits = c(-1.8, 4.5)) +
   scale_fill_manual(values = c(brewer.pal(5, "Blues"), "white",
                                brewer.pal(5, "Purples"), "white",
                                brewer.pal(5, "Greens"), "white",
@@ -386,7 +395,6 @@ ggplot(tibbleVar.niche, aes(x = x, y = y)) +
   geom_contour(data = tibbleVar.niche, aes(x = x, y = y, z = val), col="grey47", breaks=0.0000001, size=0.2, lty=2) +
   facet_grid(region_f ~ season_f, switch = "y") +
   labs(x="Temperature", y="Precipitation") +
-  scale_y_continuous(position = "right") +
   theme(legend.position = "none", strip.placement = "outside")
 dev.off()
 
@@ -395,7 +403,7 @@ dev.off()
 
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
-pdf("outputs/101/Figure_nicheTracking_maps.pdf", width=3, height=10)
+pdf("outputs/101/Figure_nicheTracking_maps2.pdf", width=3, height=10)
 
 theme_set(theme_classic())
 
@@ -467,6 +475,136 @@ gridExtra::grid.arrange(p1, p1.EST, p1.INW, p1.PNW, p1.SSW, nrow = 5)
 
 dev.off()
 
+
+
+
+
+##  Niche similarity tests  ##
+
+dist.mat.NB <- rdist.earth(hexgrid3_stem_centroids[winteringHexagons,], miles=F)
+dist.mat.NB[which(dist.mat.NB < 1, arr.ind=T)] <- 0
+dist.mat.BR <- rdist.earth(hexgrid3_stem_centroids[breedingHexagons,], miles=F)
+dist.mat.BR[which(dist.mat.BR < 1, arr.ind=T)] <- 0
+
+# EST
+niche.overlap.randNB.EST <- list()
+for(i in 1:1000){
+  winteringHexagons.randNB.EST <- sample(winteringHexagons, 1)
+  sampleID <- which(names(winteringHexagons) == names(winteringHexagons.randNB.EST))
+  #winteringHexagons.randNB.EST <- c(winteringHexagons.randNB.EST, winteringHexagons[-sampleID][order(dist.mat.NB[sampleID, -sampleID])[1:(length(which(popNB == "EST"))-1)]])
+  winteringHexagons.randNB.EST <- c(winteringHexagons.randNB.EST, sample(winteringHexagons[-sampleID], length(which(popNB == "EST"))-1, replace=F, prob = 1 / (rank(dist.mat.NB[sampleID, -sampleID])^2) ))  #1 - exp(-1/(1+dist.mat.NB[sampleID, -sampleID]))))
+  #plot(hexgrid3_stem_centroids[winteringHexagons,])
+  #points(hexgrid3_stem_centroids[winteringHexagons.randNB.EST,], col="red", pch=20)
+  wintering.niche.randNB.EST <- nicheDensityRaster(cbind(Temp.winter.zscore[winteringHexagons.randNB.EST], Prec.winter.zscore[winteringHexagons.randNB.EST]))
+  density.wintering.randNB.EST <- rasterToPoints(wintering.niche.randNB.EST)[,3]
+  niche.overlap.randNB.EST[[i]] <- 1 - (0.5 * (sum(abs(density.breeding.EST - density.wintering.randNB.EST))))
+}
+niche.overlap.randBR.EST <- list()
+for(i in 1:1000){
+  breedingHexagons.randBR.EST <- sample(breedingHexagons, 1)
+  sampleID <- which(names(breedingHexagons) == names(breedingHexagons.randBR.EST))
+  breedingHexagons.randBR.EST <- c(breedingHexagons.randBR.EST, sample(breedingHexagons[-sampleID], length(which(popBR == "EST"))-1, replace=F, prob = 1 / (rank(dist.mat.BR[sampleID, -sampleID])^2) ))  # 1 / (1 + dist.mat.BR[sampleID, -sampleID]) ))  #1 - exp(-1/(1+dist.mat.BR[sampleID, -sampleID]))))
+  breeding.niche.randBR.EST <- nicheDensityRaster(cbind(Temp.summer.zscore[breedingHexagons.randBR.EST], Prec.summer.zscore[breedingHexagons.randBR.EST]))
+  density.breeding.randBR.EST <- rasterToPoints(breeding.niche.randBR.EST)[,3]
+  niche.overlap.randBR.EST[[i]] <- 1 - (0.5 * (sum(abs(density.breeding.randBR.EST - density.wintering.EST))))
+}
+niche.overlap.rand.EST <- c(unlist(niche.overlap.randNB.EST), unlist(niche.overlap.randBR.EST))
+es.randBR.EST <- (niche.overlap.EST - mean(unlist(niche.overlap.randBR.EST))) / sd(unlist(niche.overlap.randBR.EST))
+es.randNB.EST <- (niche.overlap.EST - mean(unlist(niche.overlap.randNB.EST))) / sd(unlist(niche.overlap.randNB.EST))
+es.rand.EST <- (niche.overlap.EST - mean(unlist(niche.overlap.rand.EST))) / sd(unlist(niche.overlap.rand.EST))
+pval.randBR.EST <- length(which(niche.overlap.randBR.EST > niche.overlap.EST)) / length(niche.overlap.randBR.EST)
+pval.randNB.EST <- length(which(niche.overlap.randNB.EST > niche.overlap.EST)) / length(niche.overlap.randNB.EST)
+pval.rand.EST <- length(which(niche.overlap.rand.EST > niche.overlap.EST)) / length(niche.overlap.rand.EST)
+
+
+# INW
+niche.overlap.randNB.INW <- list()
+for(i in 1:1000){
+  winteringHexagons.randNB.INW <- sample(winteringHexagons, 1)
+  sampleID <- which(names(winteringHexagons) == names(winteringHexagons.randNB.INW))
+  winteringHexagons.randNB.INW <- c(winteringHexagons.randNB.INW, sample(winteringHexagons[-sampleID], length(which(popNB == "INW"))-1, replace=F, prob = 1 / (rank(dist.mat.NB[sampleID, -sampleID])^2) ))  #1 - exp(-1/(1+dist.mat.NB[sampleID, -sampleID]))))
+  wintering.niche.randNB.INW <- nicheDensityRaster(cbind(Temp.winter.zscore[winteringHexagons.randNB.INW], Prec.winter.zscore[winteringHexagons.randNB.INW]))
+  density.wintering.randNB.INW <- rasterToPoints(wintering.niche.randNB.INW)[,3]
+  niche.overlap.randNB.INW[[i]] <- 1 - (0.5 * (sum(abs(density.breeding.INW - density.wintering.randNB.INW))))
+}
+niche.overlap.randBR.INW <- list()
+for(i in 1:1000){
+  breedingHexagons.randBR.INW <- sample(breedingHexagons, 1)
+  sampleID <- which(names(breedingHexagons) == names(breedingHexagons.randBR.INW))
+  breedingHexagons.randBR.INW <- c(breedingHexagons.randBR.INW, sample(breedingHexagons[-sampleID], length(which(popBR == "INW"))-1, replace=F, prob = 1 / (rank(dist.mat.BR[sampleID, -sampleID])^2) ))   #1 - exp(-1/(1+dist.mat.BR[sampleID, -sampleID]))))
+  breeding.niche.randBR.INW <- nicheDensityRaster(cbind(Temp.summer.zscore[breedingHexagons.randBR.INW], Prec.summer.zscore[breedingHexagons.randBR.INW]))
+  density.breeding.randBR.INW <- rasterToPoints(breeding.niche.randBR.INW)[,3]
+  niche.overlap.randBR.INW[[i]] <- 1 - (0.5 * (sum(abs(density.breeding.randBR.INW - density.wintering.INW))))
+}
+niche.overlap.rand.INW <- c(unlist(niche.overlap.randNB.INW), unlist(niche.overlap.randBR.INW))
+es.randBR.INW <- (niche.overlap.INW - mean(unlist(niche.overlap.randBR.INW))) / sd(unlist(niche.overlap.randBR.INW))
+es.randNB.INW <- (niche.overlap.INW - mean(unlist(niche.overlap.randNB.INW))) / sd(unlist(niche.overlap.randNB.INW))
+es.rand.INW <- (niche.overlap.INW - mean(unlist(niche.overlap.rand.INW))) / sd(unlist(niche.overlap.rand.INW))
+pval.randBR.INW <- length(which(niche.overlap.randBR.INW > niche.overlap.INW)) / length(niche.overlap.randBR.INW)
+pval.randNB.INW <- length(which(niche.overlap.randNB.INW > niche.overlap.INW)) / length(niche.overlap.randNB.INW)
+pval.rand.INW <- length(which(niche.overlap.rand.INW > niche.overlap.INW)) / length(niche.overlap.rand.INW)
+
+
+# PNW
+niche.overlap.randNB.PNW <- list()
+for(i in 1:1000){
+  winteringHexagons.randNB.PNW <- sample(winteringHexagons, 1)
+  sampleID <- which(names(winteringHexagons) == names(winteringHexagons.randNB.PNW))
+  winteringHexagons.randNB.PNW <- c(winteringHexagons.randNB.PNW, sample(winteringHexagons[-sampleID], length(which(popNB == "PNW"))-1, replace=F, prob = 1 / (rank(dist.mat.NB[sampleID, -sampleID])^2) )) #1 - exp(-1/(1+dist.mat.NB[sampleID, -sampleID]))))
+  wintering.niche.randNB.PNW <- nicheDensityRaster(cbind(Temp.winter.zscore[winteringHexagons.randNB.PNW], Prec.winter.zscore[winteringHexagons.randNB.PNW]))
+  density.wintering.randNB.PNW <- rasterToPoints(wintering.niche.randNB.PNW)[,3]
+  niche.overlap.randNB.PNW[[i]] <- 1 - (0.5 * (sum(abs(density.breeding.PNW - density.wintering.randNB.PNW))))
+}
+niche.overlap.randBR.PNW <- list()
+for(i in 1:1000){
+  breedingHexagons.randBR.PNW <- sample(breedingHexagons, 1)
+  sampleID <- which(names(breedingHexagons) == names(breedingHexagons.randBR.PNW))
+  breedingHexagons.randBR.PNW <- c(breedingHexagons.randBR.PNW, sample(breedingHexagons[-sampleID], length(which(popBR == "PNW"))-1, replace=F, prob = 1 / (rank(dist.mat.BR[sampleID, -sampleID])^2) )) #1 - exp(-1/(1+dist.mat.BR[sampleID, -sampleID]))))
+  breeding.niche.randBR.PNW <- nicheDensityRaster(cbind(Temp.summer.zscore[breedingHexagons.randBR.PNW], Prec.summer.zscore[breedingHexagons.randBR.PNW]))
+  density.breeding.randBR.PNW <- rasterToPoints(breeding.niche.randBR.PNW)[,3]
+  niche.overlap.randBR.PNW[[i]] <- 1 - (0.5 * (sum(abs(density.breeding.randBR.PNW - density.wintering.PNW))))
+}
+niche.overlap.rand.PNW <- c(unlist(niche.overlap.randNB.PNW), unlist(niche.overlap.randBR.PNW))
+es.randBR.PNW <- (niche.overlap.PNW - mean(unlist(niche.overlap.randBR.PNW))) / sd(unlist(niche.overlap.randBR.PNW))
+es.randNB.PNW <- (niche.overlap.PNW - mean(unlist(niche.overlap.randNB.PNW))) / sd(unlist(niche.overlap.randNB.PNW))
+es.rand.PNW <- (niche.overlap.PNW - mean(unlist(niche.overlap.rand.PNW))) / sd(unlist(niche.overlap.rand.PNW))
+pval.randBR.PNW <- length(which(niche.overlap.randBR.PNW > niche.overlap.PNW)) / length(niche.overlap.randBR.PNW)
+pval.randNB.PNW <- length(which(niche.overlap.randNB.PNW > niche.overlap.PNW)) / length(niche.overlap.randNB.PNW)
+pval.rand.PNW <- length(which(niche.overlap.rand.PNW > niche.overlap.PNW)) / length(niche.overlap.rand.PNW)
+
+
+# SSW
+niche.overlap.randNB.SSW <- list()
+for(i in 1:1000){
+  winteringHexagons.randNB.SSW <- sample(winteringHexagons, 1)
+  sampleID <- which(names(winteringHexagons) == names(winteringHexagons.randNB.SSW))
+  winteringHexagons.randNB.SSW <- c(winteringHexagons.randNB.SSW, sample(winteringHexagons[-sampleID], length(which(popNB == "SSW"))-1, replace=F, prob = 1 / (rank(dist.mat.NB[sampleID, -sampleID])^2) )) #1 - exp(-1/(1+dist.mat.NB[sampleID, -sampleID]))))
+  wintering.niche.randNB.SSW <- nicheDensityRaster(cbind(Temp.winter.zscore[winteringHexagons.randNB.SSW], Prec.winter.zscore[winteringHexagons.randNB.SSW]))
+  density.wintering.randNB.SSW <- rasterToPoints(wintering.niche.randNB.SSW)[,3]
+  niche.overlap.randNB.SSW[[i]] <- 1 - (0.5 * (sum(abs(density.breeding.SSW - density.wintering.randNB.SSW))))
+}
+niche.overlap.randBR.SSW <- list()
+for(i in 1:1000){
+  breedingHexagons.randBR.SSW <- sample(breedingHexagons, 1)
+  sampleID <- which(names(breedingHexagons) == names(breedingHexagons.randBR.SSW))
+  breedingHexagons.randBR.SSW <- c(breedingHexagons.randBR.SSW, sample(breedingHexagons[-sampleID], length(which(popBR == "SSW"))-1, replace=F, prob = 1 / (rank(dist.mat.BR[sampleID, -sampleID])^2) )) #1 - exp(-1/(1+dist.mat.BR[sampleID, -sampleID]))))
+  breeding.niche.randBR.SSW <- nicheDensityRaster(cbind(Temp.summer.zscore[breedingHexagons.randBR.SSW], Prec.summer.zscore[breedingHexagons.randBR.SSW]))
+  density.breeding.randBR.SSW <- rasterToPoints(breeding.niche.randBR.SSW)[,3]
+  niche.overlap.randBR.SSW[[i]] <- 1 - (0.5 * (sum(abs(density.breeding.randBR.SSW - density.wintering.SSW))))
+}
+niche.overlap.rand.SSW <- c(unlist(niche.overlap.randNB.SSW), unlist(niche.overlap.randBR.SSW))
+es.randBR.SSW <- (niche.overlap.SSW - mean(unlist(niche.overlap.randBR.SSW))) / sd(unlist(niche.overlap.randBR.SSW))
+es.randNB.SSW <- (niche.overlap.SSW - mean(unlist(niche.overlap.randNB.SSW))) / sd(unlist(niche.overlap.randNB.SSW))
+es.rand.SSW <- (niche.overlap.SSW - mean(unlist(niche.overlap.rand.SSW))) / sd(unlist(niche.overlap.rand.SSW))
+pval.randBR.SSW <- length(which(niche.overlap.randBR.SSW > niche.overlap.SSW)) / length(niche.overlap.randBR.SSW)
+pval.randNB.SSW <- length(which(niche.overlap.randNB.SSW > niche.overlap.SSW)) / length(niche.overlap.randNB.SSW)
+pval.rand.SSW <- length(which(niche.overlap.rand.SSW > niche.overlap.SSW)) / length(niche.overlap.rand.SSW)
+
+
+niche.similarity.results <- data.frame(population = c("EST", "INW", "PNW", "SSW"),
+                                       effect_size = c(es.randBR.EST, es.randBR.INW, es.randBR.PNW, es.randBR.SSW),
+                                       pval = c(pval.randBR.EST, pval.randBR.INW, pval.randBR.PNW, pval.randBR.SSW))
+write.csv(niche.similarity.results, "outputs/101/niche_similarity_results.csv", row.names = F)
 
 
 # Stuff for recording how long it took to run this:
