@@ -69,13 +69,6 @@ Temp.raster.summer <- calc(Temp_stack[[6:8]], fun = mean)
 Prec.raster.winter <- calc(Prec_stack[[c(11:12,1:4)]], fun = mean)
 Prec.raster.summer <- calc(Prec_stack[[6:8]], fun = mean)
 
-z = stack(Bio_stack, Temp.raster.winter, Temp.raster.summer, Prec.raster.winter, Prec.raster.summer)
-Temp.raster.winter <- calc(z, fun = function(x) cor(x[2], x[20], method='pearson'))
-
-cor(getValues(Temp.raster.winter), getValues(Bio_stack[[17]]), use="pairwise.complete.obs", method="pearson")
-cor(getValues(Temp.raster.summer), getValues(Bio_stack[[17]]), use="pairwise.complete.obs", method="pearson")
-cor(getValues(Prec.raster.winter), getValues(Bio_stack[[17]]), use="pairwise.complete.obs", method="pearson")
-cor(getValues(Prec.raster.summer), getValues(Bio_stack[[17]]), use="pairwise.complete.obs", method="pearson")
 
 ##  Extract climate data onto the hexagon grid  ##
 

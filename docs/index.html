@@ -1674,7 +1674,7 @@ summary {
 </ul>
 </div>
 
-<p><strong>Last Updated:</strong> 2021-03-04</p>
+<p><strong>Last Updated:</strong> 2021-04-01</p>
 <div id="overview" class="section level1">
 <h1>Overview</h1>
 <p>This repository includes code, data, and some intermediate results to reproduce the results in Ruegg et al. (“Seasonal niche breadth predicts population declines in a long-distance migratory bird”). You can get the whole thing by cloning or downloading the repo from <a href="https://github.com/eriqande/ruegg-et-al-wifl-genoscape">https://github.com/eriqande/ruegg-et-al-wifl-genoscape</a>.</p>
@@ -1686,7 +1686,7 @@ summary {
 All the RMarkdown documents or scripts can be evaluated en masse by sourcing the R script <code>render-numbered-Rmds-and-scripts.R</code>. On a fairly old mac laptop the run times for each are as follows:
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["File"],"name":[1],"type":["chr"],"align":["left"]},{"label":["Running time in HH:MM:SS"],"name":[2],"type":["chr"],"align":["left"]}],"data":[{"1":"001-rad-seq-data-summaries-and-pca.Rmd","2":"00:00:59"},{"1":"002-select-snps-for-assays-from-rad.Rmd","2":"00:00:45"},{"1":"003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd","2":"00:00:10"},{"1":"004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd","2":"00:00:12"},{"1":"005-choosing-96-SNPs-from-amongst-the-179.Rmd","2":"00:00:05"},{"1":"006-make-the-genoscape.Rmd","2":"00:02:55"},{"1":"007-process-fluidigm-plates-for-wintering-birds.Rmd","2":"00:00:10"},{"1":"008-rubias-self-assign-and-wintering-birds.Rmd","2":"00:00:14"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["File"],"name":[1],"type":["chr"],"align":["left"]},{"label":["Running time in HH:MM:SS"],"name":[2],"type":["chr"],"align":["left"]}],"data":[{"1":"001-rad-seq-data-summaries-and-pca.Rmd","2":"00:00:59"},{"1":"002-select-snps-for-assays-from-rad.Rmd","2":"00:00:45"},{"1":"003-process-5-plates-of-birds-at-192-fluidigm-snps.Rmd","2":"00:00:10"},{"1":"004-combine-RAD-and-fludigm-breeders-and-run-STRUCTURE.Rmd","2":"00:00:12"},{"1":"005-choosing-96-SNPs-from-amongst-the-179.Rmd","2":"00:00:05"},{"1":"006-make-the-genoscape.Rmd","2":"00:02:55"},{"1":"007-process-fluidigm-plates-for-wintering-birds.Rmd","2":"00:00:10"},{"1":"008-rubias-self-assign-and-wintering-birds.Rmd","2":"00:00:11"},{"1":"101-niche_tracking_analysis.R","2":"07:57:38"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 </div>
@@ -1804,6 +1804,9 @@ Climate-data/wc2.1_2.5m_prec_08.tif  Climate-data/wc2.1_2.5m_tavg_05.tif</code><
 <h2>R Packages</h2>
 <p>Packages must be downloaded from CRAN, BioConductor, and GitHub. The following code, which is in <code>R/install_packages_etc.R</code>, will download and install the necessary packages:</p>
 <pre class="r"><code># just R code to install the packages needed for running the notebooks
+
+# Note: on 2021-03-29 I found that dggrid had been removed from CRAN.
+# But old versions (we installed 2.0.4) are archived and can be installed instead.
 
 # get the packages needed from CRAN
 install.packages(

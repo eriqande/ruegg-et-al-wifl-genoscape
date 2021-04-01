@@ -9,16 +9,17 @@ rule all:
     "005-choosing-96-SNPs-from-amongst-the-179.html",
     "006-make-the-genoscape.html",
     "007-process-fluidigm-plates-for-wintering-birds.html",
-    "008-rubias-self-assign-and-wintering-birds.html"
-    
+    "008-rubias-self-assign-and-wintering-birds.html",
+    "outputs/101/Figure_nicheTracking_maps2.pdf"
+
 
 rule stored_results_from_cluster:
   input:
   output:
     "stored_results/002/candidate_snps_tossed.csv",
     "stored_results/004/StructOuput_genos_slg_pipe.txt_dat001_k005_Rep001.txt_f",
-    
-    
+
+
 rule input_data_files_etc:
   input:
   output:
@@ -67,7 +68,7 @@ rule select_assay_snps_from_rad_seq_002:
     "outputs/002/wifl-assay-candidates-with-ranks.csv"
   shell:
     "Rscript --vanilla R/render-markdown.R {input[0]}"
-    
+
 
 
 rule process_5_plates_of_birds_at_192_fluidigm_snps_003:
@@ -95,7 +96,7 @@ rule combine_RAD_and_fludigm_breeders_and_run_STRUCTURE_004:
     "outputs/004/rad_and_fluidigm_combined_568_breeders_at_179_snps.rds"
   shell:
     "Rscript --vanilla R/render-markdown.R {input[0]}"
-  
+
 
 
 rule choosing_96_SNPs_from_amongst_the_179_005:
@@ -108,7 +109,7 @@ rule choosing_96_SNPs_from_amongst_the_179_005:
     "outputs/005/top96_loci.csv"
   shell:
     "Rscript --vanilla R/render-markdown.R {input[0]}"
-  
+
 rule make_the_genoscape_006:
   input:
     "006-make-the-genoscape.Rmd",
@@ -119,7 +120,7 @@ rule make_the_genoscape_006:
     "006-make-the-genoscape.html"
   shell:
     "Rscript --vanilla R/render-markdown.R {input[0]}"
-  
+
 
 rule process_fluidigm_plates_for_wintering_birds_007:
   input:
@@ -149,3 +150,13 @@ rule rubias_self_assign_and_wintering_birds_008:
     "Rscript --vanilla R/render-markdown.R {input[0]}"
 
 
+rule niche_tracking_analysis_101:
+  input:
+    "101-niche_tracking_analysis.R",
+    "data/appendices/app1-Individual_Assignment_All.csv"
+  output:
+    "outputs/101/Figure_nicheTracking3.pdf",
+    "outputs/101/Figure_nicheTracking_maps2.pdf",
+    "outputs/101/niche_similarity_results.csv"
+  shell:
+    "Rscript --vanilla {input[0]}"

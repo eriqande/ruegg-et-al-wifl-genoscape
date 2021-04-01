@@ -24,7 +24,7 @@ Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith
   - [Snakemake](#snakemake)
   - [Literature Cited](#literature-cited)
 
-**Last Updated:** 2021-03-04
+**Last Updated:** 2021-04-01
 
 # Overview
 
@@ -61,7 +61,7 @@ All the RMarkdown documents or scripts can be evaluated en masse by
 sourcing the R script `render-numbered-Rmds-and-scripts.R`. On a fairly
 old mac laptop the run times for each are as follows:
 
-    ## # A tibble: 8 x 2
+    ## # A tibble: 9 x 2
     ##   File                                                  `Running time in HH:MM:…
     ##   <chr>                                                 <chr>                   
     ## 1 001-rad-seq-data-summaries-and-pca.Rmd                00:00:59                
@@ -71,7 +71,8 @@ old mac laptop the run times for each are as follows:
     ## 5 005-choosing-96-SNPs-from-amongst-the-179.Rmd         00:00:05                
     ## 6 006-make-the-genoscape.Rmd                            00:02:55                
     ## 7 007-process-fluidigm-plates-for-wintering-birds.Rmd   00:00:10                
-    ## 8 008-rubias-self-assign-and-wintering-birds.Rmd        00:00:14
+    ## 8 008-rubias-self-assign-and-wintering-birds.Rmd        00:00:11                
+    ## 9 101-niche_tracking_analysis.R                         07:57:38
 
 # Preliminaries and Dependencies
 
@@ -236,6 +237,9 @@ and install the necessary packages:
 
 ``` r
 # just R code to install the packages needed for running the notebooks
+
+# Note: on 2021-03-29 I found that dggrid had been removed from CRAN.
+# But old versions (we installed 2.0.4) are archived and can be installed instead.
 
 # get the packages needed from CRAN
 install.packages(

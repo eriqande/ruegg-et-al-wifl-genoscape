@@ -1645,7 +1645,7 @@ summary {
 
 <h1 class="title toc-ignore">Rubias self assignments and wintering birds</h1>
 <h4 class="author">Eric C. Anderson</h4>
-<h4 class="date">Last Updated: 2021-01-27</h4>
+<h4 class="date">Last Updated: 2021-04-01</h4>
 
 </div>
 
@@ -1666,7 +1666,6 @@ summary {
 <li><a href="#now-assign-the-wintering-birds">Now assign the wintering birds</a></li>
 <li><a href="#finally-put-those-points-on-a-map">finally, put those points on a map</a></li>
 <li><a href="#running-time">Running Time</a></li>
-<li><a href="#session-info">Session Info</a></li>
 </ul>
 </div>
 
@@ -1971,10 +1970,9 @@ tdf &lt;- hms::as_hms(ceiling(hms::as_hms(td)))
 dir.create(&quot;stored_run_times&quot;, showWarnings = FALSE, recursive = TRUE)
 write_rds(tdf, &quot;stored_run_times/008.rds&quot;)
 tdf</code></pre>
-<pre><code>## 00:00:10</code></pre>
-</div>
-<div id="session-info" class="section level1">
-<h1>Session Info</h1>
+<pre><code>## 00:00:11</code></pre>
+<p>A quick note about the repository. The the output from this just gets stored in <code>./data/appendices/app1-winter-indivs-assignments-and-genos.csv</code> as it is more accessible to users that way (and it can be part of the supp info, if desired).</p>
+<p>For the final analysis (101) the results of <code>data/appendices/app1-winter-indivs-assignments-and-genos.csv</code> and of the breeding area analyses, <code>data/appendices/app1-Individual_Assignment_All.csv</code>, were combined into <code>data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv</code>, which was used. That last file also includes the assignments of migrants that were typed, but not used in the analysis. # Session Info</p>
 <pre class="r"><code>sessioninfo::session_info()</code></pre>
 <pre><code>## ─ Session info ───────────────────────────────────────────────────────────────
 ##  setting  value                       
@@ -1986,7 +1984,7 @@ tdf</code></pre>
 ##  collate  en_US.UTF-8                 
 ##  ctype    en_US.UTF-8                 
 ##  tz       America/Denver              
-##  date     2021-01-27                  
+##  date     2021-04-01                  
 ## 
 ## ─ Packages ───────────────────────────────────────────────────────────────────
 ##  package      * version date       lib source        
@@ -2017,7 +2015,7 @@ tdf</code></pre>
 ##  gtable         0.3.0   2019-03-25 [1] CRAN (R 4.0.2)
 ##  haven          2.3.1   2020-06-01 [1] CRAN (R 4.0.2)
 ##  hms            0.5.3   2020-01-08 [1] CRAN (R 4.0.2)
-##  htmltools      0.5.0   2020-06-16 [1] CRAN (R 4.0.2)
+##  htmltools      0.5.1.1 2021-01-22 [1] CRAN (R 4.0.2)
 ##  httr           1.4.2   2020-07-20 [1] CRAN (R 4.0.2)
 ##  jsonlite       1.7.2   2020-12-09 [1] CRAN (R 4.0.2)
 ##  KernSmooth     2.23-17 2020-04-26 [2] CRAN (R 4.0.3)

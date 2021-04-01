@@ -324,6 +324,15 @@ write_rds(tdf, "stored_run_times/008.rds")
 tdf
 ``` 
 
+
+A quick note about the repository.  The the output from this
+just gets stored in `./data/appendices/app1-winter-indivs-assignments-and-genos.csv` as it
+is more accessible to users that way (and it can be part of the supp info, if desired).
+
+For the final analysis (101) the results of `data/appendices/app1-winter-indivs-assignments-and-genos.csv`
+and of the breeding area analyses, `data/appendices/app1-Individual_Assignment_All.csv`, were
+combined into `data/appendices/app1-SITable1_Breed_IndvAssigwgenos.csv`, which was used.  That last file
+also includes the assignments of migrants that were typed, but not used in the analysis.
 # Session Info
 
 ```{r}

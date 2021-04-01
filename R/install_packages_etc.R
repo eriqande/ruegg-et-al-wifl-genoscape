@@ -1,5 +1,8 @@
 # just R code to install the packages needed for running the notebooks
 
+# Note: on 2021-03-29 I found that dggrid had been removed from CRAN.
+# But old versions (we installed 2.0.4) are archived and can be installed instead.
+
 # get the packages needed from CRAN
 install.packages(
   c(
