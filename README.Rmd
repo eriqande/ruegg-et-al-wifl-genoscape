@@ -12,6 +12,9 @@ output:
 bibliography: references.bib
 ---
 
+[![DOI](https://zenodo.org/badge/297655089.svg)](https://zenodo.org/badge/latestdoi/297655089)
+
+
 **Last Updated:** `r Sys.Date()`
 
 

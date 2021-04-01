@@ -24,6 +24,8 @@ Christen Bossu, Mary Whitfield, Eben H. Paxton, Thomas B. Smith
   - [Snakemake](#snakemake)
   - [Literature Cited](#literature-cited)
 
+[![DOI](https://zenodo.org/badge/297655089.svg)](https://zenodo.org/badge/latestdoi/297655089)
+
 **Last Updated:** 2021-04-01
 
 # Overview
